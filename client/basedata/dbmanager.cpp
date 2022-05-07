@@ -1,6 +1,9 @@
 #include "dbmanager.h"
 #include <QDebug>
 #include <QSqlRecord>
+#include <QFile>
+#include <QSettings>
+#include <QDir>
 
 DBManager::DBManager()
 {
@@ -9,12 +12,33 @@ DBManager::DBManager()
 
 bool DBManager::openConnection()
 {
+    QString host,dbName, userName, password;
+    int port;
+
+    if(QFile("dbconfig.ini").exists())
+    {
+        QSettings settings("dbconfig.ini",QSettings::IniFormat);
+        settings.sync();
+        settings.beginGroup("database");
+        host = settings.value("host").toString();
+        port = settings.value("port").toInt();
+        dbName = settings.value("dbName").toString();
+        userName = settings.value("userName").toString();
+        password = settings.value("password").toString();
+        settings.endGroup();
+    }
+    else
+    {
+        qDebug() << "dbconfig.ini not exist.";
+        return false;
+    }
+
     db = QSqlDatabase::addDatabase("QPSQL");
-    db.setHostName("127.0.0.1");
-    db.setPort(5432);
-    db.setDatabaseName("basedata");
-    db.setUserName("postgres");
-    db.setPassword("qazwsx");
+    db.setHostName(host);
+    db.setPort(port);
+    db.setDatabaseName(dbName);
+    db.setUserName(userName);
+    db.setPassword(password);
     bool ok = db.open();
     if(!ok)
     {
@@ -59,4 +83,15 @@ QList<request> *DBManager::loadRequests()
     else
         qDebug() << "SQL ERROR: " << query.lastError().text();
     return result;
+}
+
+QSqlQueryModel *DBManager::getRequestModel()
+{
+    QSqlQueryModel* model = new QSqlQueryModel();
+    model->setQuery("SELECT * FROM request ORDER BY id DESC;",db);
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getRequestModel -> SQL ERROR: " << model->lastError().text();
+    }
+    return model;
 }
