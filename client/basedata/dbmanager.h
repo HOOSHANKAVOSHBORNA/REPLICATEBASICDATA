@@ -14,7 +14,7 @@ public:
     DBManager();
     bool openConnection();
     void closeConnection();
-    QList<struct request>* loadRequests();
+    QList<Request>* loadRequests();
     QSqlQueryModel* getRequestModel();
 private:
     QSqlDatabase db;

@@ -16,7 +16,11 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableView->setModel(model);
 
 
-//    QList<request> *requestList =  dbm.loadRequests();
+    QList<Request> *requestList =  dbm.loadRequests();
+    Request req = requestList->at(0);
+    QByteArray reqData = req.toByteArray();
+    Request req1;
+    req1.fromByteArray(&reqData);
 
 //    ui->tableWidget->setRowCount(requestList->length());
 //    ui->tableWidget->setColumnCount(10);

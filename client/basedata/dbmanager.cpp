@@ -56,15 +56,15 @@ void DBManager::closeConnection()
     db.close();
 }
 
-QList<request> *DBManager::loadRequests()
+QList<Request> *DBManager::loadRequests()
 {
-    QList<request>* result = new QList<request>();
+    QList<Request>* result = new QList<Request>();
     QSqlQuery query(db);
     QString sql = "SELECT * FROM request;";
     if (query.exec(sql) != false) {
         while (query.next())
         {
-            request req;
+            Request req;
             QSqlRecord rec = query.record();
             req.id = query.value(rec.indexOf("id")).toLongLong();
             req.table_id = query.value(rec.indexOf("table_id")).toLongLong();
