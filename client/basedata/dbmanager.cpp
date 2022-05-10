@@ -166,6 +166,15 @@ QSqlQueryModel *DBManager::getTableNameModel()
     return model;
 }
 
+QSqlRelationalTableModel *DBManager::getRelationalModelTableName(QString _name)
+{
+    QSqlRelationalTableModel* model = new QSqlRelationalTableModel();
+    model->setTable(_name);
+    model->setEditStrategy(QSqlTableModel::OnManualSubmit);
+    model->select();
+    return model;
+}
+
 DBManager *DBManager::getDBManager()
 {
     if (!instance)

@@ -3,6 +3,8 @@
 #include "dbmanager.h"
 #include <QDebug>
 #include <QJsonDocument>
+#include <QSqlRecord>
+#include <QSqlField>
 #include "createrequestdialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -12,7 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onCustomMenuRequested(QPoint)));
+    connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onCustomMenuRequest(QPoint)));
 
     DBManager *dbm  = DBManager::getDBManager();
     dbm->openConnection();
@@ -20,8 +22,8 @@ MainWindow::MainWindow(QWidget *parent)
 //    QSqlQueryModel* model = dbm.getRequestModel();
 //    ui->tableView->setModel(model);
 
-    QSqlRelationalTableModel* model = dbm->getRequestRelationalModel();
-    ui->tableView->setModel(model);
+    requestModel = dbm->getRequestRelationalModel();
+    ui->tableView->setModel(requestModel);
 
 
 //    QList<Request> *requestList =  dbm.loadRequests();
@@ -78,7 +80,20 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::onCustomMenuRequested(QPoint pos)
+QByteArray MainWindow::toByteArray(QSqlRecord _rec)
+{
+    QByteArray result;
+    QDataStream stream(&result,QIODevice::ReadWrite);
+    stream.setVersion(QDataStream::Qt_5_13);
+    for (int i = 0; i < _rec.count(); i++)
+    {
+        QSqlField field = _rec.field(i);
+        stream << field.value();
+    }
+    return result;
+}
+
+void MainWindow::onCustomMenuRequest(QPoint pos)
 {
     /* Create an object context menu */
    QMenu * menu = new QMenu(this);
@@ -99,6 +114,46 @@ void MainWindow::onCustomMenuRequested(QPoint pos)
 void MainWindow::onAddRequest()
 {
     CreateRequestDialog *createRequest = new CreateRequestDialog(this);
-    createRequest->show();
+    int ret = createRequest->exec();
+    QSqlRelationalTableModel *model = createRequest->getModel();
+    QList<int> insertIndexList = createRequest->getInsertIndexList();
+    if(ret == QDialog::Accepted)
+    {
+        if(!model->submitAll())
+        {
+            qDebug() << "AddRequest -> SQL ERROR: " << model->lastError().text();
+            return;
+        }
+        for(auto insertIndex:insertIndexList){
+            QSqlRecord rec = model->record(insertIndex);
+            QByteArray data = toByteArray(rec);
+            //--------------------------------------------------
+            QSqlRecord requestRec = requestModel->record();
+            requestRec.remove(requestRec.indexOf("id"));
+            requestRec.setValue("table_id", rec.field("id").value());
+            requestRec.setValue("table_name_name_3", 1);
+            requestRec.setValue("applicant", 11);
+            requestRec.setValue("reviewer", 12);
+            requestRec.setValue("request_type_name_2", "insert");
+            requestRec.setValue("name", "checking");
+            requestRec.setValue("data", data);
+            requestRec.setValue("description", "{}");
+            requestRec.setValue("created_at", 12345);
+            qDebug() <<"requestRec:"<<requestRec;
+            if(requestModel->insertRecord(-1, requestRec))
+            {
+                if(!requestModel->submitAll())
+                {
+                    qDebug() << "AddRequest requestModel -> SQL ERROR: " << requestModel->lastError().text();
+                }
+            }
+            //------------------------------------------------
+            qDebug() << "insert: " << requestModel->lastError().text();
+        }
+    }
+    else
+    {
+        model->revertAll();
+    }
 }
 

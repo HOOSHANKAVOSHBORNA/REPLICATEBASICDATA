@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QSqlRelationalTableModel>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -14,10 +15,13 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+private:
+    QByteArray toByteArray(QSqlRecord);
 private slots:
-    void onCustomMenuRequested(QPoint pos);
+    void onCustomMenuRequest(QPoint pos);
     void onAddRequest();
 private:
     Ui::MainWindow *ui;
+    QSqlRelationalTableModel* requestModel;
 };
 #endif // MAINWINDOW_H

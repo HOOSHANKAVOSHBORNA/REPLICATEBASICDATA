@@ -19,6 +19,7 @@ public:
     QSqlQueryModel* getRequestModel();
     QSqlRelationalTableModel* getRequestRelationalModel();
     QSqlQueryModel* getTableNameModel();
+    QSqlRelationalTableModel* getRelationalModelTableName(QString _name);
 private:
     DBManager();
     QSqlDatabase db;
