@@ -3,24 +3,32 @@
 #include "dbmanager.h"
 #include <QDebug>
 #include <QJsonDocument>
+#include "createrequestdialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    DBManager dbm;
-    dbm.openConnection();
 
-    QSqlQueryModel* model = dbm.getRequestModel();
+    ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onCustomMenuRequested(QPoint)));
+
+    DBManager *dbm  = DBManager::getDBManager();
+    dbm->openConnection();
+
+//    QSqlQueryModel* model = dbm.getRequestModel();
+//    ui->tableView->setModel(model);
+
+    QSqlRelationalTableModel* model = dbm->getRequestRelationalModel();
     ui->tableView->setModel(model);
 
 
-    QList<Request> *requestList =  dbm.loadRequests();
-    Request req = requestList->at(0);
-    QByteArray reqData = req.toByteArray();
-    Request req1;
-    req1.fromByteArray(&reqData);
+//    QList<Request> *requestList =  dbm.loadRequests();
+//    Request req = requestList->at(0);
+//    QByteArray reqData = req.toByteArray();
+//    Request req1;
+//    req1.fromByteArray(&reqData);
 
 //    ui->tableWidget->setRowCount(requestList->length());
 //    ui->tableWidget->setColumnCount(10);
@@ -62,11 +70,35 @@ MainWindow::MainWindow(QWidget *parent)
 ////        qDebug()<<"description:"<< req.description;
 ////        qDebug("created_at:%ld",req.created_at);
 //    }
-    dbm.closeConnection();
+    dbm->closeConnection();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::onCustomMenuRequested(QPoint pos)
+{
+    /* Create an object context menu */
+   QMenu * menu = new QMenu(this);
+   /* Create actions to the context menu */
+   QAction * addRequest = new QAction("Add", this);
+   QAction * sendRequest = new QAction("Send", this);
+   QAction * rollbackRequest = new QAction("Rollback", this);
+   /* Connect slot handlers for Action pop-up menu */
+   connect(addRequest, SIGNAL(triggered()), this, SLOT(onAddRequest()));  // Call Handler dialog editing
+   /* Set the actions to the menu */
+   menu->addAction(addRequest);
+   menu->addAction(sendRequest);
+   menu->addAction(rollbackRequest);
+   /* Call the context menu */
+   menu->popup(ui->tableView->viewport()->mapToGlobal(pos));
+}
+
+void MainWindow::onAddRequest()
+{
+    CreateRequestDialog *createRequest = new CreateRequestDialog(this);
+    createRequest->show();
 }
 

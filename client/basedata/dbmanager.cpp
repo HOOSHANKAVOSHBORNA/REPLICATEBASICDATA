@@ -5,12 +5,8 @@
 #include <QSettings>
 #include <QDir>
 
+DBManager* DBManager::instance= nullptr;
 DBManager::DBManager()
-{
-
-}
-
-bool DBManager::openConnection()
 {
     QString host,dbName, userName, password;
     int port;
@@ -30,15 +26,20 @@ bool DBManager::openConnection()
     else
     {
         qDebug() << "dbconfig.ini not exist.";
-        return false;
     }
 
+    //db = QSqlDatabase::addDatabase("QPSQL");
+    //db->addDatabase("QPSQL");
     db = QSqlDatabase::addDatabase("QPSQL");
     db.setHostName(host);
     db.setPort(port);
     db.setDatabaseName(dbName);
     db.setUserName(userName);
     db.setPassword(password);
+}
+
+bool DBManager::openConnection()
+{
     bool ok = db.open();
     if(!ok)
     {
@@ -68,7 +69,7 @@ QList<Request> *DBManager::loadRequests()
             QSqlRecord rec = query.record();
             req.id = query.value(rec.indexOf("id")).toLongLong();
             req.table_id = query.value(rec.indexOf("table_id")).toLongLong();
-            req.table_name_id = query.value(rec.indexOf("table_name_id")).toInt();
+            req.table_name = query.value(rec.indexOf("table_name")).toInt();
             req.applicant = query.value(rec.indexOf("applicant")).toInt();
             req.reviewer = query.value(rec.indexOf("reviewer")).toInt();
             req.type = (int16_t)query.value(rec.indexOf("type")).toInt();
@@ -94,4 +95,80 @@ QSqlQueryModel *DBManager::getRequestModel()
         qDebug() << "getRequestModel -> SQL ERROR: " << model->lastError().text();
     }
     return model;
+}
+
+QSqlRelationalTableModel *DBManager::getRequestRelationalModel()
+{
+    QSqlRelationalTableModel* model = new QSqlRelationalTableModel();
+    model->setTable("request");
+    model->setEditStrategy(QSqlTableModel::OnManualSubmit);
+
+//    QSqlQuery query(db);
+//    QString sql = "SELECT " \
+//            "tc.table_schema, "\
+//            "tc.constraint_name, "\
+//            "tc.table_name, "\
+//            "kcu.column_name, "\
+//            "col.ordinal_position, "\
+//            "ccu.table_schema AS foreign_table_schema," \
+//            "ccu.table_name AS foreign_table_name," \
+//            "ccu.column_name AS foreign_column_name " \
+//        "FROM " \
+//            "information_schema.table_constraints AS tc "\
+//            "JOIN information_schema.key_column_usage AS kcu "\
+//              "ON tc.constraint_name = kcu.constraint_name"\
+//             " AND tc.table_schema = kcu.table_schema "\
+//            "JOIN information_schema.columns as col "\
+//                "ON col.column_name = kcu.column_name "\
+//                 "AND tc.table_schema = col.table_schema "\
+//            "JOIN information_schema.constraint_column_usage AS ccu "\
+//              "ON ccu.constraint_name = tc.constraint_name "\
+//              "AND ccu.table_schema = tc.table_schema "\
+//        "WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name='request';";
+//    if (query.exec(sql) != false) {
+//        while (query.next())
+//        {
+//            Request req;
+//            QSqlRecord rec = query.record();
+//            QString column_name = query.value(rec.indexOf("column_name")).toString();
+//            QString foreign_table_name = query.value(rec.indexOf("foreign_table_name")).toString();
+//            QString foreign_column_name = query.value(rec.indexOf("foreign_column_name")).toString();
+//            int column_index = query.value(rec.indexOf("ordinal_position")).toInt();
+
+//            model->setRelation(column_index - 1, QSqlRelation(foreign_table_name, foreign_column_name, "name"));
+//            model->setHeaderData(column_index- 1, Qt::Horizontal, column_name);
+//        }
+//    }
+//    else
+//        qDebug() << "SQL ERROR: " << query.lastError().text();
+
+    model->setRelation(2, QSqlRelation("table_name", "id", "name"));
+    model->setHeaderData(2, Qt::Horizontal, "table_name");
+
+    model->setRelation(5, QSqlRelation("request_type", "id", "name"));
+    model->setHeaderData(5, Qt::Horizontal, "type");
+
+    model->setRelation(6, QSqlRelation("request_status", "id", "name"));
+    model->setHeaderData(6, Qt::Horizontal, "status");
+
+    model->select();
+    return model;
+}
+
+QSqlQueryModel *DBManager::getTableNameModel()
+{
+    QSqlQueryModel* model = new QSqlQueryModel();
+    model->setQuery("SELECT name FROM table_name;",db);
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getRequestModel -> SQL ERROR: " << model->lastError().text();
+    }
+    return model;
+}
+
+DBManager *DBManager::getDBManager()
+{
+    if (!instance)
+          instance = new DBManager();
+    return instance;
 }

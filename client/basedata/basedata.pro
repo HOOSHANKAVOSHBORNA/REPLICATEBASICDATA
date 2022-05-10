@@ -17,16 +17,19 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    createrequestdialog.cpp \
     dbmanager.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
+    createrequestdialog.h \
     datastrucs.h \
     dbmanager.h \
     mainwindow.h
 
 FORMS += \
+    createrequestdialog.ui \
     mainwindow.ui
 
 # Default rules for deployment.

@@ -14,7 +14,9 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-
+private slots:
+    void onCustomMenuRequested(QPoint pos);
+    void onAddRequest();
 private:
     Ui::MainWindow *ui;
 };

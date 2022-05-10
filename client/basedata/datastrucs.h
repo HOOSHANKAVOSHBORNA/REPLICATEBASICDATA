@@ -6,7 +6,7 @@
 struct Request{
     qint64 id;
     qint64 table_id;
-    qint32 table_name_id;
+    qint32 table_name;
     qint32 applicant;
     qint32 reviewer;
     qint16 type;
@@ -21,7 +21,7 @@ struct Request{
         stream.setVersion(QDataStream::Qt_5_13);
         stream << id
          << table_id
-         << table_name_id
+         << table_name
          << applicant
          << reviewer
          << type
@@ -37,7 +37,7 @@ struct Request{
         stream.setVersion(QDataStream::Qt_5_13);
         stream >> id
          >> table_id
-         >> table_name_id
+         >> table_name
          >> applicant
          >> reviewer
          >> type
