@@ -17,16 +17,20 @@ public:
     explicit CreateRequestDialog(QWidget *parent = nullptr);
     QSqlRelationalTableModel* getModel()const;
     QList<int> getInsertIndexList()const;
+    QList<int> getDeleteIndexList()const;
     ~CreateRequestDialog();
 private slots:
     void onCustomMenuRequest(QPoint pos);
     void onComboCurrentIndexChanged(QString _tableName);
     void onInsertRow();
+    void onDeleteRow();
 private:
     Ui::CreateRequestDialog *ui;
-    DBManager *dbm;
-    QSqlRelationalTableModel* model;
-    QList<int> insertIndexList;
+    DBManager *m_dbm;
+    QSqlRelationalTableModel* m_model;
+    QList<int> m_insertIndexList;
+    QList<int> m_deleteIndexList;
+    int m_selectedRow;
 };
 
 #endif // CREATEREQUESTDIALOG_H

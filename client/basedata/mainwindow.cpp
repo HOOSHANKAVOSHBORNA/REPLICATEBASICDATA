@@ -5,7 +5,9 @@
 #include <QJsonDocument>
 #include <QSqlRecord>
 #include <QSqlField>
+#include <QSqlQuery>
 #include "createrequestdialog.h"
+#include <QSqlRelationalDelegate>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -24,7 +26,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     requestModel = dbm->getRequestRelationalModel();
     ui->tableView->setModel(requestModel);
+    ui->tableView->setItemDelegate(new QSqlRelationalDelegate(ui->tableView));
 
+//    QSqlRecord requestRec = requestModel->record(0);s
+//    qDebug() <<"requestRec:"<<requestRec;
+//    qDebug()<<requestModel->data(requestModel->index(0, 2));
 
 //    QList<Request> *requestList =  dbm.loadRequests();
 //    Request req = requestList->at(0);
@@ -72,7 +78,7 @@ MainWindow::MainWindow(QWidget *parent)
 ////        qDebug()<<"description:"<< req.description;
 ////        qDebug("created_at:%ld",req.created_at);
 //    }
-    dbm->closeConnection();
+    //dbm->closeConnection();
 }
 
 MainWindow::~MainWindow()
@@ -103,57 +109,105 @@ void MainWindow::onCustomMenuRequest(QPoint pos)
    QAction * rollbackRequest = new QAction("Rollback", this);
    /* Connect slot handlers for Action pop-up menu */
    connect(addRequest, SIGNAL(triggered()), this, SLOT(onAddRequest()));  // Call Handler dialog editing
+   connect(rollbackRequest, SIGNAL(triggered()), this, SLOT(onRollbackRequest()));
    /* Set the actions to the menu */
    menu->addAction(addRequest);
-   menu->addAction(sendRequest);
-   menu->addAction(rollbackRequest);
+   m_selectedRow = ui->tableView->rowAt(pos.y());
+   if(m_selectedRow != -1)
+   {
+       menu->addAction(sendRequest);
+       menu->addAction(rollbackRequest);
+   }
    /* Call the context menu */
    menu->popup(ui->tableView->viewport()->mapToGlobal(pos));
 }
 
 void MainWindow::onAddRequest()
 {
+    ///todo add transaction--------------------------------
     CreateRequestDialog *createRequest = new CreateRequestDialog(this);
     int ret = createRequest->exec();
-    QSqlRelationalTableModel *model = createRequest->getModel();
-    QList<int> insertIndexList = createRequest->getInsertIndexList();
+
     if(ret == QDialog::Accepted)
     {
+        QSqlRelationalTableModel *model = createRequest->getModel();
+        QList<int> insertIndexList = createRequest->getInsertIndexList();
+        QList<int> deleteIndexList = createRequest->getDeleteIndexList();
+        //--insert table changes---------------------------------------------
         if(!model->submitAll())
         {
             qDebug() << "AddRequest -> SQL ERROR: " << model->lastError().text();
             return;
         }
-        for(auto insertIndex:insertIndexList){
+        //--insert "insert request" ----------------------------------------
+        for(auto insertIndex:insertIndexList)
+        {
             QSqlRecord rec = model->record(insertIndex);
             QByteArray data = toByteArray(rec);
-            //--------------------------------------------------
             QSqlRecord requestRec = requestModel->record();
             requestRec.remove(requestRec.indexOf("id"));
             requestRec.setValue("table_id", rec.field("id").value());
             requestRec.setValue("table_name_name_3", 1);
             requestRec.setValue("applicant", 11);
             requestRec.setValue("reviewer", 12);
-            requestRec.setValue("request_type_name_2", "insert");
-            requestRec.setValue("name", "checking");
+            requestRec.setValue("request_type_name_2", 1);//insert
+            requestRec.setValue("name", 1);//checking
             requestRec.setValue("data", data);
             requestRec.setValue("description", "{}");
             requestRec.setValue("created_at", 12345);
-            qDebug() <<"requestRec:"<<requestRec;
-            if(requestModel->insertRecord(-1, requestRec))
+            //qDebug() <<"requestRec:"<<requestRec;
+            if(!requestModel->insertRecord(-1, requestRec))
             {
-                if(!requestModel->submitAll())
-                {
-                    qDebug() << "AddRequest requestModel -> SQL ERROR: " << requestModel->lastError().text();
-                }
+                requestModel->revertAll();
+                return;
             }
-            //------------------------------------------------
-            qDebug() << "insert: " << requestModel->lastError().text();
+        }
+        //-------------------------------------------------------------------
+        //--insert delete request--------------------------------------------
+        for(auto index:deleteIndexList)
+        {
+            QSqlRecord rec = model->record(index);
+            QByteArray data = toByteArray(rec);
+            QSqlRecord requestRec = requestModel->record();
+            requestRec.remove(requestRec.indexOf("id"));
+            requestRec.setValue("table_id", rec.field("id").value());
+            requestRec.setValue("table_name_name_3", 1);
+            requestRec.setValue("applicant", 11);
+            requestRec.setValue("reviewer", 12);
+            requestRec.setValue("request_type_name_2", 4);//delete
+            requestRec.setValue("name", 1);//checking
+            requestRec.setValue("data", data);
+            requestRec.setValue("description", "{}");
+            requestRec.setValue("created_at", 12345);
+            //qDebug() <<"requestRec:"<<requestRec;
+            if(!requestModel->insertRecord(-1, requestRec))
+            {
+                requestModel->revertAll();
+                return;
+            }
+        }
+        //-------------------------------------------------------------------
+        //--insert requests----------------------------------------------------------------
+        if(!requestModel->submitAll())
+        {
+            qDebug() << "AddRequest requestModel -> SQL ERROR: " << requestModel->lastError().text();
+            requestModel->revertAll();
         }
     }
-    else
+
+}
+
+void MainWindow::onRollbackRequest()
+{
+    if(requestModel->removeRows(m_selectedRow, 1))
     {
-        model->revertAll();
+        if(!requestModel->submitAll())
+        {
+            qDebug() << "DeleteRequest requestModel -> SQL ERROR: " << requestModel->lastError().text();
+            requestModel->revertAll();
+        }
+        requestModel->select();
     }
+
 }
 

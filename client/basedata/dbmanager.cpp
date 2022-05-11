@@ -142,6 +142,8 @@ QSqlRelationalTableModel *DBManager::getRequestRelationalModel()
 //    else
 //        qDebug() << "SQL ERROR: " << query.lastError().text();
 
+//    QSqlRelation rl("table_name", "id", "name");
+//    rl.displayColumn();
     model->setRelation(2, QSqlRelation("table_name", "id", "name"));
     model->setHeaderData(2, Qt::Horizontal, "table_name");
 
@@ -151,7 +153,12 @@ QSqlRelationalTableModel *DBManager::getRequestRelationalModel()
     model->setRelation(6, QSqlRelation("request_status", "id", "name"));
     model->setHeaderData(6, Qt::Horizontal, "status");
 
+    model->setSort(0, Qt::DescendingOrder);
     model->select();
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getRequestModel -> SQL ERROR: " << model->lastError().text();
+    }
     return model;
 }
 

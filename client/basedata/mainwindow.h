@@ -17,11 +17,14 @@ public:
     ~MainWindow();
 private:
     QByteArray toByteArray(QSqlRecord);
+    void addInsertRequest();
 private slots:
     void onCustomMenuRequest(QPoint pos);
     void onAddRequest();
+    void onRollbackRequest();
 private:
     Ui::MainWindow *ui;
     QSqlRelationalTableModel* requestModel;
+    int m_selectedRow;
 };
 #endif // MAINWINDOW_H

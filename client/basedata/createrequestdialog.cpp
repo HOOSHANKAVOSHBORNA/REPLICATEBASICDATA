@@ -6,7 +6,7 @@
 CreateRequestDialog::CreateRequestDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::CreateRequestDialog),
-    dbm(DBManager::getDBManager())
+    m_dbm(DBManager::getDBManager())
 {
     ui->setupUi(this);
     setWindowTitle("Edit table");
@@ -16,9 +16,9 @@ CreateRequestDialog::CreateRequestDialog(QWidget *parent) :
     connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onCustomMenuRequest(QPoint)));
 
     //dbm = DBManager::getDBManager();
-    dbm->openConnection();
+    m_dbm->openConnection();
 
-    QSqlQueryModel* model = dbm->getTableNameModel();
+    QSqlQueryModel* model = m_dbm->getTableNameModel();
     ui->comboBox->setModel(model);
 
 
@@ -26,12 +26,17 @@ CreateRequestDialog::CreateRequestDialog(QWidget *parent) :
 
 QSqlRelationalTableModel *CreateRequestDialog::getModel() const
 {
-    return model;
+    return m_model;
 }
 
 QList<int> CreateRequestDialog::getInsertIndexList() const
 {
-    return insertIndexList;
+    return m_insertIndexList;
+}
+
+QList<int> CreateRequestDialog::getDeleteIndexList() const
+{
+    return m_deleteIndexList;
 }
 
 CreateRequestDialog::~CreateRequestDialog()
@@ -45,27 +50,55 @@ void CreateRequestDialog::onCustomMenuRequest(QPoint pos)
    QMenu * menu = new QMenu(this);
    /* Create actions to the context menu */
    QAction * insertRow = new QAction("Insert Row", this);
+   QAction * deleteRow = new QAction("Delete Row", this);
    /* Connect slot handlers for Action pop-up menu */
    connect(insertRow, SIGNAL(triggered()), this, SLOT(onInsertRow()));  // Call Handler dialog editing
+   connect(deleteRow, SIGNAL(triggered()), this, SLOT(onDeleteRow()));
    /* Set the actions to the menu */
    menu->addAction(insertRow);
+   m_selectedRow = ui->tableView->rowAt(pos.y());
+   if(m_selectedRow != -1)
+   {
+       menu->addAction(deleteRow);
+   }
    /* Call the context menu */
    menu->popup(ui->tableView->viewport()->mapToGlobal(pos));
 }
 
 void CreateRequestDialog::onComboCurrentIndexChanged(QString _tableName)
 {
-    model = dbm->getRelationalModelTableName(_tableName);
-    ui->tableView->setModel(model);
+    m_model = m_dbm->getRelationalModelTableName(_tableName);
+    ui->tableView->setModel(m_model);
 }
 
 void CreateRequestDialog::onInsertRow()
 {
-    QSqlRecord record = model->record();
+    QSqlRecord record = m_model->record();
     record.remove(record.indexOf("id"));
     //record.setValue("firstname", f);
-    if(model->insertRecord(-1, record))
+    if(m_model->insertRecord(-1, record))
     {
-        insertIndexList.append(model->rowCount()- 1);
+        m_insertIndexList.append(m_model->rowCount()- 1);
+    }
+}
+
+void CreateRequestDialog::onDeleteRow()
+{
+    bool isInInsert = false;
+    if(m_model->removeRows(m_selectedRow, 1))
+    {
+        for(int i = 0; i < m_insertIndexList.count(); i++)
+        {
+            if(m_insertIndexList.at(i) == m_selectedRow)
+            {
+                m_insertIndexList.removeAt(i);
+                isInInsert = true;
+                for(int j = i; j<m_insertIndexList.count();j++)
+                    m_insertIndexList[j]--;
+                break;
+            }
+        }
+        if(!isInInsert)
+            m_deleteIndexList.append(m_selectedRow);
     }
 }
