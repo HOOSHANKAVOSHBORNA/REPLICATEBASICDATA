@@ -2,6 +2,7 @@
 #include "ui_createrequestdialog.h"
 #include <QMenu>
 #include<QSqlRecord>
+#include <QSqlField>
 
 CreateRequestDialog::CreateRequestDialog(QWidget *parent) :
     QDialog(parent),
@@ -34,7 +35,7 @@ QList<int> CreateRequestDialog::getInsertIndexList() const
     return m_insertIndexList;
 }
 
-QList<int> CreateRequestDialog::getDeleteIndexList() const
+QList<CreateRequestDialog::DeleteStruct> CreateRequestDialog::getDeleteIndexList() const
 {
     return m_deleteIndexList;
 }
@@ -69,6 +70,9 @@ void CreateRequestDialog::onComboCurrentIndexChanged(QString _tableName)
 {
     m_model = m_dbm->getRelationalModelTableName(_tableName);
     ui->tableView->setModel(m_model);
+    //clear changed data----------
+    m_insertIndexList.clear();
+    m_deleteIndexList.clear();
 }
 
 void CreateRequestDialog::onInsertRow()
@@ -99,6 +103,8 @@ void CreateRequestDialog::onDeleteRow()
             }
         }
         if(!isInInsert)
-            m_deleteIndexList.append(m_selectedRow);
+        {
+            m_deleteIndexList.append({m_selectedRow,m_model->record(m_selectedRow)});
+        }
     }
 }

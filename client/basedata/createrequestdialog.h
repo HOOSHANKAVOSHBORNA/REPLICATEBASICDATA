@@ -3,6 +3,7 @@
 
 #include <QDialog>
 #include <QList>
+#include <QSqlRecord>
 #include "dbmanager.h"
 
 namespace Ui {
@@ -12,12 +13,17 @@ class CreateRequestDialog;
 class CreateRequestDialog : public QDialog
 {
     Q_OBJECT
-
+public:
+    struct DeleteStruct
+    {
+        int index;
+        QSqlRecord rec;
+    };
 public:
     explicit CreateRequestDialog(QWidget *parent = nullptr);
     QSqlRelationalTableModel* getModel()const;
     QList<int> getInsertIndexList()const;
-    QList<int> getDeleteIndexList()const;
+    QList<DeleteStruct> getDeleteIndexList()const;
     ~CreateRequestDialog();
 private slots:
     void onCustomMenuRequest(QPoint pos);
@@ -29,7 +35,7 @@ private:
     DBManager *m_dbm;
     QSqlRelationalTableModel* m_model;
     QList<int> m_insertIndexList;
-    QList<int> m_deleteIndexList;
+    QList<DeleteStruct> m_deleteIndexList;
     int m_selectedRow;
 };
 

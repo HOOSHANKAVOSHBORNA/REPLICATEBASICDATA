@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QSettings>
 #include <QDir>
+#include <QSqlQuery>
 
 DBManager* DBManager::instance= nullptr;
 DBManager::DBManager()
@@ -40,6 +41,8 @@ DBManager::DBManager()
 
 bool DBManager::openConnection()
 {
+    if(db.isOpen())
+        return true;
     bool ok = db.open();
     if(!ok)
     {
@@ -157,7 +160,7 @@ QSqlRelationalTableModel *DBManager::getRequestRelationalModel()
     model->select();
     if(model->lastError().isValid())
     {
-        qDebug() << "getRequestModel -> SQL ERROR: " << model->lastError().text();
+        qDebug() << "getRequestRelationalModel -> SQL ERROR: " << model->lastError().text();
     }
     return model;
 }
@@ -168,7 +171,7 @@ QSqlQueryModel *DBManager::getTableNameModel()
     model->setQuery("SELECT name FROM table_name;",db);
     if(model->lastError().isValid())
     {
-        qDebug() << "getRequestModel -> SQL ERROR: " << model->lastError().text();
+        qDebug() << "getTableNameModel -> SQL ERROR: " << model->lastError().text();
     }
     return model;
 }
@@ -181,6 +184,54 @@ QSqlRelationalTableModel *DBManager::getRelationalModelTableName(QString _name)
     model->select();
     return model;
 }
+
+int DBManager::getRequestTypeIndex(QString _typeName) const
+{
+    QSqlQueryModel* model = new QSqlQueryModel();
+//    QSqlQuery query(db);
+//    query.prepare("SELECT * FROM request_type WHERE name = ?;");
+//    query.addBindValue(_typeName);
+    model->setQuery("SELECT * FROM request_type WHERE name = '" + _typeName +"'", db);
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getRequestTypeIndex -> SQL ERROR: " << model->lastError().text();
+    }
+    //qDebug()<< model->record(0);
+    return model->record(0).value("id").toInt();
+}
+
+int DBManager::getRequestStatusIndex(QString _statusName) const
+{
+    QSqlQueryModel* model = new QSqlQueryModel();
+    model->setQuery("SELECT * FROM request_status WHERE name = '" + _statusName +"'", db);
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getRequestStatusIndex -> SQL ERROR: " << model->lastError().text();
+    }
+    return model->record(0).value("id").toInt();
+}
+
+int DBManager::getTableIndex(QString _tableName) const
+{
+    QSqlQueryModel* model = new QSqlQueryModel();
+    model->setQuery("SELECT * FROM table_name WHERE name = '" + _tableName +"'", db);
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getTableIndex -> SQL ERROR: " << model->lastError().text();
+    }
+    return model->record(0).value("id").toInt();
+}
+int DBManager::getAckStatusIndex(QString _statusName) const
+{
+    QSqlQueryModel* model = new QSqlQueryModel();
+    model->setQuery("SELECT * FROM ack_status WHERE name = '" + _statusName +"'", db);
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getAckStatusIndex -> SQL ERROR: " << model->lastError().text();
+    }
+    return model->record(0).value("id").toInt();
+}
+
 
 DBManager *DBManager::getDBManager()
 {

@@ -6,6 +6,7 @@
 #include <QSqlRecord>
 #include <QSqlField>
 #include <QSqlQuery>
+#include <QDateTime>
 #include "createrequestdialog.h"
 #include <QSqlRelationalDelegate>
 
@@ -18,19 +19,19 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onCustomMenuRequest(QPoint)));
 
-    DBManager *dbm  = DBManager::getDBManager();
-    dbm->openConnection();
+    m_dbm  = DBManager::getDBManager();
+    m_dbm->openConnection();
 
 //    QSqlQueryModel* model = dbm.getRequestModel();
 //    ui->tableView->setModel(model);
 
-    requestModel = dbm->getRequestRelationalModel();
-    ui->tableView->setModel(requestModel);
+    m_requestModel = m_dbm->getRequestRelationalModel();
+    ui->tableView->setModel(m_requestModel);
     ui->tableView->setItemDelegate(new QSqlRelationalDelegate(ui->tableView));
 
-//    QSqlRecord requestRec = requestModel->record(0);s
+//    QSqlRecord requestRec = m_requestModel->record(0);s
 //    qDebug() <<"requestRec:"<<requestRec;
-//    qDebug()<<requestModel->data(requestModel->index(0, 2));
+//    qDebug()<<m_requestModel->data(m_requestModel->index(0, 2));
 
 //    QList<Request> *requestList =  dbm.loadRequests();
 //    Request req = requestList->at(0);
@@ -99,6 +100,21 @@ QByteArray MainWindow::toByteArray(QSqlRecord _rec)
     return result;
 }
 
+QSqlRecord MainWindow::fromByteArray(QByteArray _data, QString _tableName)
+{
+    QDataStream stream(_data);
+    stream.setVersion(QDataStream::Qt_5_13);
+    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(_tableName);
+    QSqlRecord rec = model->record();
+    for (int i = 0; i < rec.count(); i++)
+    {
+        QVariant field;
+        stream >> field;
+        rec.setValue(i,field);
+    }
+    return rec;
+}
+
 void MainWindow::onCustomMenuRequest(QPoint pos)
 {
     /* Create an object context menu */
@@ -109,6 +125,7 @@ void MainWindow::onCustomMenuRequest(QPoint pos)
    QAction * rollbackRequest = new QAction("Rollback", this);
    /* Connect slot handlers for Action pop-up menu */
    connect(addRequest, SIGNAL(triggered()), this, SLOT(onAddRequest()));  // Call Handler dialog editing
+   connect(sendRequest, SIGNAL(triggered()), this, SLOT(onSendRequest()));
    connect(rollbackRequest, SIGNAL(triggered()), this, SLOT(onRollbackRequest()));
    /* Set the actions to the menu */
    menu->addAction(addRequest);
@@ -132,66 +149,76 @@ void MainWindow::onAddRequest()
     {
         QSqlRelationalTableModel *model = createRequest->getModel();
         QList<int> insertIndexList = createRequest->getInsertIndexList();
-        QList<int> deleteIndexList = createRequest->getDeleteIndexList();
+        QList<CreateRequestDialog::DeleteStruct> deleteIndexList = createRequest->getDeleteIndexList();
         //--insert table changes---------------------------------------------
         if(!model->submitAll())
         {
-            qDebug() << "AddRequest -> SQL ERROR: " << model->lastError().text();
+            qDebug() << "onAddRequest:model:submit -> SQL ERROR: " << model->lastError().text();
             return;
         }
+        //------
         //--insert "insert request" ----------------------------------------
+        int tableIndex = m_dbm->getTableIndex(model->tableName());
+        int type = m_dbm->getRequestTypeIndex("insert");
+        int status = m_dbm->getRequestStatusIndex("checking");
+        int applicant = 11;
+        int reviewer = 12;
+        qint64 time = QDateTime::currentMSecsSinceEpoch();
         for(auto insertIndex:insertIndexList)
         {
-            QSqlRecord rec = model->record(insertIndex);
+            //valid index (delete index remove from model in submitAll)
+            int index = insertIndex - deleteIndexList.length();
+            QSqlRecord rec = model->record(index);
             QByteArray data = toByteArray(rec);
-            QSqlRecord requestRec = requestModel->record();
+            QSqlRecord requestRec = m_requestModel->record();
             requestRec.remove(requestRec.indexOf("id"));
             requestRec.setValue("table_id", rec.field("id").value());
-            requestRec.setValue("table_name_name_3", 1);
-            requestRec.setValue("applicant", 11);
-            requestRec.setValue("reviewer", 12);
-            requestRec.setValue("request_type_name_2", 1);//insert
-            requestRec.setValue("name", 1);//checking
+            requestRec.setValue("table_name_name_3", tableIndex);
+            requestRec.setValue("applicant", applicant);
+            requestRec.setValue("reviewer", reviewer);
+            requestRec.setValue("request_type_name_2", type);//insert
+            requestRec.setValue("name", status);//checking
             requestRec.setValue("data", data);
             requestRec.setValue("description", "{}");
-            requestRec.setValue("created_at", 12345);
+            requestRec.setValue("created_at", time);
             //qDebug() <<"requestRec:"<<requestRec;
-            if(!requestModel->insertRecord(-1, requestRec))
+            if(!m_requestModel->insertRecord(-1, requestRec))
             {
-                requestModel->revertAll();
+                m_requestModel->revertAll();
                 return;
             }
         }
         //-------------------------------------------------------------------
         //--insert delete request--------------------------------------------
-        for(auto index:deleteIndexList)
+        type = m_dbm->getRequestTypeIndex("delete");
+        for(auto delStruct:deleteIndexList)
         {
-            QSqlRecord rec = model->record(index);
-            QByteArray data = toByteArray(rec);
-            QSqlRecord requestRec = requestModel->record();
+            //QSqlRecord rec = model->record(delStruct.index);
+            QByteArray data = toByteArray(delStruct.rec);
+            QSqlRecord requestRec = m_requestModel->record();
             requestRec.remove(requestRec.indexOf("id"));
-            requestRec.setValue("table_id", rec.field("id").value());
-            requestRec.setValue("table_name_name_3", 1);
-            requestRec.setValue("applicant", 11);
-            requestRec.setValue("reviewer", 12);
-            requestRec.setValue("request_type_name_2", 4);//delete
-            requestRec.setValue("name", 1);//checking
+            requestRec.setValue("table_id", delStruct.rec.field("id").value());
+            requestRec.setValue("table_name_name_3", tableIndex);
+            requestRec.setValue("applicant", applicant);
+            requestRec.setValue("reviewer", reviewer);
+            requestRec.setValue("request_type_name_2", type);//delete
+            requestRec.setValue("name", status);//checking
             requestRec.setValue("data", data);
             requestRec.setValue("description", "{}");
-            requestRec.setValue("created_at", 12345);
+            requestRec.setValue("created_at", time);
             //qDebug() <<"requestRec:"<<requestRec;
-            if(!requestModel->insertRecord(-1, requestRec))
+            if(!m_requestModel->insertRecord(-1, requestRec))
             {
-                requestModel->revertAll();
+                m_requestModel->revertAll();
                 return;
             }
         }
         //-------------------------------------------------------------------
         //--insert requests----------------------------------------------------------------
-        if(!requestModel->submitAll())
+        if(!m_requestModel->submitAll())
         {
-            qDebug() << "AddRequest requestModel -> SQL ERROR: " << requestModel->lastError().text();
-            requestModel->revertAll();
+            qDebug() << "onAddRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
+            m_requestModel->revertAll();
         }
     }
 
@@ -199,15 +226,78 @@ void MainWindow::onAddRequest()
 
 void MainWindow::onRollbackRequest()
 {
-    if(requestModel->removeRows(m_selectedRow, 1))
+    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    QString tableName = reqRec.value("table_name_name_3").toString();
+    QString type = reqRec.value("request_type_name_2").toString();
+    QByteArray data = reqRec.value("data").toByteArray();
+    QSqlRecord tableRec = fromByteArray(data, tableName);
+//    qDebug()<< reqRec;
+//    qDebug()<< tableRec;
+    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(tableName);
+    if(type == "insert")
     {
-        if(!requestModel->submitAll())
+        model->setFilter("id = " + tableRec.value("id").toString());
+        model->select();
+        if(model->removeRows(0, 1))
         {
-            qDebug() << "DeleteRequest requestModel -> SQL ERROR: " << requestModel->lastError().text();
-            requestModel->revertAll();
+            if(!model->submitAll())
+            {
+                qDebug() << "onRollbackRequest:model:insert -> SQL ERROR: " << model->lastError().text();
+                return;
+            }
         }
-        requestModel->select();
+    }
+    else if(type == "delete")
+    {
+        if(model->insertRecord(-1, tableRec))
+        {
+            if(!model->submitAll())
+            {
+                qDebug() << "onRollbackRequest:model:delete -> SQL ERROR: " << model->lastError().text();
+                return;
+            }
+        }
+    }
+    if(m_requestModel->removeRows(m_selectedRow, 1))
+    {
+        if(!m_requestModel->submitAll())
+        {
+            qDebug() << "onRollbackRequest:m_requestModel:remove -> SQL ERROR: " << m_requestModel->lastError().text();
+            m_requestModel->revertAll();
+        }
+        m_requestModel->select();
     }
 
+}
+
+void MainWindow::onSendRequest()
+{
+    // add acknowledgment --------------------------------------------------------------
+    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName("acknowledgment");
+    QSqlRecord rec = model->record();
+    rec.remove(rec.indexOf("id"));
+    rec.setValue("request_id",reqRec.value("id"));
+    rec.setValue("receiver",2);
+    int ackStatus = m_dbm->getAckStatusIndex("pending");
+    rec.setValue("status",ackStatus);
+    if(model->insertRecord(-1, rec))
+    {
+        if(!model->submitAll())
+        {
+            qDebug() << "onSendRequest:model:insert ack -> SQL ERROR: " << model->lastError().text();
+            return;
+        }
+    }
+    //update request status-------------------------------------
+    int reqStatus = m_dbm->getRequestStatusIndex("waiting");
+    QSqlRecord curentRec = m_requestModel->record(m_selectedRow);
+    curentRec.setValue("name", reqStatus);
+    m_requestModel->setRecord(m_selectedRow, curentRec);
+    if(!m_requestModel->submitAll())
+    {
+        qDebug() << "onSendRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
+        m_requestModel->revertAll();
+    }
 }
 

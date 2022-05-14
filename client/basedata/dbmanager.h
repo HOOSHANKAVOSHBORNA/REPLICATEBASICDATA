@@ -20,6 +20,10 @@ public:
     QSqlRelationalTableModel* getRequestRelationalModel();
     QSqlQueryModel* getTableNameModel();
     QSqlRelationalTableModel* getRelationalModelTableName(QString _name);
+    int getRequestTypeIndex(QString _typeName) const;
+    int getRequestStatusIndex(QString _statusName) const;
+    int getTableIndex(QString _tableName) const;
+    int getAckStatusIndex(QString _statusName) const;
 private:
     DBManager();
     QSqlDatabase db;
