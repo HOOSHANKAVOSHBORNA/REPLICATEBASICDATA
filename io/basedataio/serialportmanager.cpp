@@ -18,6 +18,7 @@ SerialPortManager::SerialPortManager(QString portName, QObject *parent):
     connect(&m_timer, &QTimer::timeout, this, &SerialPortManager::handleTimeout);
 
     m_timer.start(5000);
+    m_isHeaderRead = false;
 }
 
 void SerialPortManager::writeData(const QByteArray &data)
@@ -47,15 +48,24 @@ void SerialPortManager::writeData(const QByteArray &data)
 
 void SerialPortManager::readData()
 {
-    //const QByteArray data = m_serial->read(6);
-    const QByteArray data = m_serial->readAll();
 
-    QString endStr = QString::fromUtf8(data);
-//    if(endStr == "#")
-//        handleRead();
+    //const QByteArray data = m_serial->readAll();
+    qint8 len;
+    if(!m_isHeaderRead)
+    {
+        const QByteArray data = m_serial->read(1);
+        len = data.at(0);
+        m_isHeaderRead = true;
+    }
+
+    if (m_serial->bytesAvailable() < len)
+    {
+        return;
+    }
+    const QByteArray data = m_serial->read(len);
     m_readData.append(data);
     handleRead();
-
+    m_isHeaderRead = false;
 
 }
 
@@ -80,8 +90,10 @@ void SerialPortManager::handleError(QSerialPort::SerialPortError error)
 
 void SerialPortManager::handleTimeout()
 {
-
-    writeData(QString("salam#").toUtf8());
+    QByteArray data = QString("salam#").toUtf8();
+    qint8 len = (qint8)data.length();
+    data.prepend(len);
+    writeData(data);
     //m_timer.start(5000);
 }
 

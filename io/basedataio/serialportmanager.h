@@ -28,6 +28,7 @@ private:
     QString m_curentPort;
     QTimer m_timer;
     QByteArray m_readData;
+    bool m_isHeaderRead;
 };
 
 #endif // SERIALPORTMANAGER_H
