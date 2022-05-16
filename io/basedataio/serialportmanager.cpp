@@ -47,11 +47,14 @@ void SerialPortManager::writeData(const QByteArray &data)
 
 void SerialPortManager::readData()
 {
+    //const QByteArray data = m_serial->read(6);
     const QByteArray data = m_serial->readAll();
+
     QString endStr = QString::fromUtf8(data);
-    if(endStr == "#")
-        handleRead();
+//    if(endStr == "#")
+//        handleRead();
     m_readData.append(data);
+    handleRead();
 
 
 }

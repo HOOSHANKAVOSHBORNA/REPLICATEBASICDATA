@@ -19,6 +19,7 @@ int main(int argc, char *argv[])
         if(info.portName().contains("USB"))
         {
             SerialPortManager *serialPortManager = new SerialPortManager(info.portName());
+            serialPortManager->closePort();
             serialPortManager->openPort();
             portManagerList.append(serialPortManager);
         }
