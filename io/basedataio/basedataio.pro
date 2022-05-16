@@ -20,7 +20,8 @@ SOURCES += \
         receiverequestmanager.cpp \
         receivethread.cpp \
         sendrequestmanager.cpp \
-        sendthread.cpp
+        sendthread.cpp \
+        serialportmanager.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -31,4 +32,5 @@ HEADERS += \
     receiverequestmanager.h \
     receivethread.h \
     sendrequestmanager.h \
-    sendthread.h
+    sendthread.h \
+    serialportmanager.h
