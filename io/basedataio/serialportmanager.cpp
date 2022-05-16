@@ -48,11 +48,12 @@ void SerialPortManager::writeData(const QByteArray &data)
 void SerialPortManager::readData()
 {
     const QByteArray data = m_serial->readAll();
-    const QString request = QString::fromUtf8(data);
-    m_standardOutput <<tr("Read data: '%1' from port %2.")
-                       .arg(request)
-                       .arg(m_serial->portName())
-                    << endl;
+    QString endStr = QString::fromUtf8(data);
+    if(endStr == "#")
+        handleRead();
+    m_readData.append(data);
+
+
 }
 
 void SerialPortManager::handleError(QSerialPort::SerialPortError error)
@@ -76,8 +77,26 @@ void SerialPortManager::handleError(QSerialPort::SerialPortError error)
 
 void SerialPortManager::handleTimeout()
 {
-    writeData(QString("salam").toUtf8());
-    m_timer.start(5000);
+
+    writeData(QString("salam#").toUtf8());
+    //m_timer.start(5000);
+}
+
+void SerialPortManager::handleRead()
+{
+    if (m_readData.isEmpty()) {
+//        m_standardOutput << QObject::tr("No data was currently available "
+//                                        "for reading from port %1")
+//                            .arg(m_serial->portName())
+//                         << endl;
+    } else {
+        m_standardOutput <<tr("Read data: '%1' from port %2.")
+                               .arg(QString::fromUtf8(m_readData))
+                               .arg(m_serial->portName())
+                            << endl;
+    }
+    //-----------------------------------------
+    m_readData.clear();
 }
 
 void SerialPortManager::openPort()

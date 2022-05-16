@@ -19,6 +19,7 @@ private slots:
     void readData();
     void handleError(QSerialPort::SerialPortError);
     void handleTimeout();
+    void handleRead();
 private:
 private:
     QTextStream m_standardOutput;
@@ -26,6 +27,7 @@ private:
     QList<QString> m_serialPortNameList;
     QString m_curentPort;
     QTimer m_timer;
+    QByteArray m_readData;
 };
 
 #endif // SERIALPORTMANAGER_H
