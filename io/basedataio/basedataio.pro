@@ -17,10 +17,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-        receiverequestmanager.cpp \
-        receivethread.cpp \
-        sendrequestmanager.cpp \
-        sendthread.cpp \
         serialportmanager.cpp
 
 # Default rules for deployment.
@@ -29,8 +25,4 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
-    receiverequestmanager.h \
-    receivethread.h \
-    sendrequestmanager.h \
-    sendthread.h \
     serialportmanager.h

@@ -1,6 +1,4 @@
 #include <QCoreApplication>
-#include "sendrequestmanager.h"
-#include "receiverequestmanager.h"
 #include "serialportmanager.h"
 #include <QSerialPortInfo>
 #include <QList>
