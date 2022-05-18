@@ -1,5 +1,6 @@
 QT -= gui
 QT += serialport
+QT += sql
 
 CONFIG += c++11 console
 CONFIG -= app_bundle
@@ -16,7 +17,9 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+        dbmanager.cpp \
         main.cpp \
+        requestmanager.cpp \
         serialportmanager.cpp
 
 # Default rules for deployment.
@@ -25,4 +28,16 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
+    dbmanager.h \
+    requestmanager.h \
     serialportmanager.h
+
+DISTFILES += \
+    dbconfig.ini
+
+
+copydata.commands = $(COPY_DIR) $$PWD/dbconfig.ini $$OUT_PWD
+first.depends = $(first) copydata
+export(first.depends)
+export(copydata.commands)
+QMAKE_EXTRA_TARGETS += first copydata

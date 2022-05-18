@@ -10,23 +10,30 @@
 class SerialPortManager : public QObject
 {
     Q_OBJECT
+
+
 public:
-    SerialPortManager(QString portNumber, QObject *parent = nullptr);
-    void writeData(const QByteArray &data);
+    struct PortInfo{
+        QString portName;
+        QString name;
+        int id;
+        int index;
+    };
+    SerialPortManager(PortInfo portInfo, QObject *parent = nullptr);
+    void sendData(const QByteArray &data);
     void openPort();
     void closePort();
+signals:
+    void receiveData(PortInfo, const QByteArray &);
 private slots:
     void readData();
     void handleError(QSerialPort::SerialPortError);
-    void handleTimeout();
     void handleRead();
-private:
 private:
     QTextStream m_standardOutput;
     QSerialPort *m_serial = nullptr;
     QList<QString> m_serialPortNameList;
-    QString m_curentPort;
-    QTimer m_timer;
+    PortInfo m_currentPortInfo;
     QByteArray m_readData;
     bool m_isHeaderRead;
 };
