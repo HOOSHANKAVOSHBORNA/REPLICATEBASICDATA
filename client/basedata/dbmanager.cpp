@@ -150,6 +150,12 @@ QSqlRelationalTableModel *DBManager::getRequestRelationalModel()
     model->setRelation(2, QSqlRelation("table_name", "id", "name"));
     model->setHeaderData(2, Qt::Horizontal, "table_name");
 
+    model->setRelation(3, QSqlRelation("client_info", "id", "name"));
+    model->setHeaderData(3, Qt::Horizontal, "applicant");
+
+    model->setRelation(4, QSqlRelation("client_info", "id", "name"));
+    model->setHeaderData(4, Qt::Horizontal, "reviewer");
+
     model->setRelation(5, QSqlRelation("request_type", "id", "name"));
     model->setHeaderData(5, Qt::Horizontal, "type");
 

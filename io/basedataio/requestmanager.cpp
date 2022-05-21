@@ -121,6 +121,7 @@ void RequestManager::sendAcknowledgment(int receiver, qint64 reqId)
     qint32 len = sizeof(reqId) + sizeof(type);
     stream << len; //type len(int8 = 1)
     stream << type;
+    stream << reqId;
     //-------------------------------
     m_serialPortMap[receiver]->sendData(result);
 }

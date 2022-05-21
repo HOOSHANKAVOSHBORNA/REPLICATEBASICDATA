@@ -172,15 +172,15 @@ void MainWindow::onAddRequest()
             QByteArray data = toByteArray(rec);
             QSqlRecord requestRec = m_requestModel->record();
             requestRec.remove(requestRec.indexOf("id"));
-            requestRec.setValue("table_id", rec.field("id").value());
-            requestRec.setValue("table_name_name_3", tableIndex);
-            requestRec.setValue("applicant", applicant);
-            requestRec.setValue("reviewer", reviewer);
-            requestRec.setValue("request_type_name_2", type);//insert
-            requestRec.setValue("name", status);//checking
-            requestRec.setValue("data", data);
-            requestRec.setValue("description", "{}");
-            requestRec.setValue("created_at", time);
+            requestRec.setValue(0, rec.field("id").value());
+            requestRec.setValue(1, tableIndex);
+            requestRec.setValue(2, applicant);
+            requestRec.setValue(3, reviewer);
+            requestRec.setValue(4, type);//insert
+            requestRec.setValue(5, status);//checking
+            requestRec.setValue(6, data);
+            requestRec.setValue(7, "{}");
+            requestRec.setValue(8, time);
             //qDebug() <<"requestRec:"<<requestRec;
             if(!m_requestModel->insertRecord(-1, requestRec))
             {
@@ -197,15 +197,15 @@ void MainWindow::onAddRequest()
             QByteArray data = toByteArray(delStruct.rec);
             QSqlRecord requestRec = m_requestModel->record();
             requestRec.remove(requestRec.indexOf("id"));
-            requestRec.setValue("table_id", delStruct.rec.field("id").value());
-            requestRec.setValue("table_name_name_3", tableIndex);
-            requestRec.setValue("applicant", applicant);
-            requestRec.setValue("reviewer", reviewer);
-            requestRec.setValue("request_type_name_2", type);//delete
-            requestRec.setValue("name", status);//checking
-            requestRec.setValue("data", data);
-            requestRec.setValue("description", "{}");
-            requestRec.setValue("created_at", time);
+            requestRec.setValue(0, delStruct.rec.field("id").value());
+            requestRec.setValue(1, tableIndex);
+            requestRec.setValue(2, applicant);
+            requestRec.setValue(3, reviewer);
+            requestRec.setValue(4, type);//delete
+            requestRec.setValue(5, status);//checking
+            requestRec.setValue(6, data);
+            requestRec.setValue(7, "{}");
+            requestRec.setValue(8, time);
             //qDebug() <<"requestRec:"<<requestRec;
             if(!m_requestModel->insertRecord(-1, requestRec))
             {
@@ -227,8 +227,8 @@ void MainWindow::onAddRequest()
 void MainWindow::onRollbackRequest()
 {
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
-    QString tableName = reqRec.value("table_name_name_3").toString();
-    QString type = reqRec.value("request_type_name_2").toString();
+    QString tableName = reqRec.value(2).toString();
+    QString type = reqRec.value(5).toString();
     QByteArray data = reqRec.value("data").toByteArray();
     QSqlRecord tableRec = fromByteArray(data, tableName);
 //    qDebug()<< reqRec;
@@ -311,7 +311,7 @@ void MainWindow::onSendRequest()
     //update request status-------------------------------------
     int reqStatus = m_dbm->getRequestStatusIndex("waiting");
     QSqlRecord curentRec = m_requestModel->record(m_selectedRow);
-    curentRec.setValue("name", reqStatus);
+    curentRec.setValue(6, reqStatus);
     m_requestModel->setRecord(m_selectedRow, curentRec);
     if(!m_requestModel->submitAll())
     {
