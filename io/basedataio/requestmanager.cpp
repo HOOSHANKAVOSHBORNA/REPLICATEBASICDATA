@@ -169,6 +169,20 @@ void RequestManager::onReceiveData(SerialPortManager::PortInfo info, QByteArray 
         model->select();
         if(model->rowCount() > 0)
         {
+            QSqlRecord existRec = model->record(0);
+            int status = rec.value("name").toInt();
+            existRec.setValue("name", status);
+            model->setRecord(0, existRec);
+            if(!model->submitAll())
+            {
+                m_standardOutput << tr("Can not submit request '%1' that received from '%2' -> SQL ERROR:%3 ")
+                                 .arg(reqId)
+                                 .arg(info.name)
+                                 .arg( model->lastError().text())
+                                 << endl;
+                model->revertAll();
+                return;
+            }
             sendAcknowledgment(info.id, reqId);
             return;
         }

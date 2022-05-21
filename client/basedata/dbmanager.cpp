@@ -232,6 +232,23 @@ int DBManager::getAckStatusIndex(QString _statusName) const
     return model->record(0).value("id").toInt();
 }
 
+int DBManager::getSelfId() const
+{
+    int portIndex = -1;
+    QSqlQueryModel* model = new QSqlQueryModel();
+    model->setQuery(QObject::tr("SELECT * FROM client_info WHERE port_index = %1").arg(portIndex), db);
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getAckStatusIndex -> SQL ERROR: " << model->lastError().text();
+    }
+    return model->record(0).value("id").toInt();
+}
+
+int DBManager::getReviewerId() const
+{
+    return 1;
+}
+
 
 DBManager *DBManager::getDBManager()
 {

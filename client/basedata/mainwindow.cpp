@@ -161,8 +161,8 @@ void MainWindow::onAddRequest()
         int tableIndex = m_dbm->getTableIndex(model->tableName());
         int type = m_dbm->getRequestTypeIndex("insert");
         int status = m_dbm->getRequestStatusIndex("checking");
-        int applicant = 11;
-        int reviewer = 12;
+        int applicant = m_dbm->getSelfId();
+        int reviewer = m_dbm->getReviewerId();
         qint64 time = QDateTime::currentMSecsSinceEpoch();
         for(auto insertIndex:insertIndexList)
         {
@@ -275,19 +275,38 @@ void MainWindow::onSendRequest()
     // add acknowledgment --------------------------------------------------------------
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
     QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName("acknowledgment");
-    QSqlRecord rec = model->record();
-    rec.remove(rec.indexOf("id"));
-    rec.setValue("request_id",reqRec.value("id"));
-    rec.setValue("receiver",2);
+    int reviewerId = m_dbm->getReviewerId();
+    int selfId = m_dbm->getSelfId();
     int ackStatus = m_dbm->getAckStatusIndex("pending");
-    rec.setValue("status",ackStatus);
-    if(model->insertRecord(-1, rec))
+    if(selfId == reviewerId)
     {
-        if(!model->submitAll())
-        {
-            qDebug() << "onSendRequest:model:insert ack -> SQL ERROR: " << model->lastError().text();
-            return;
-        }
+        QSqlRecord rec = model->record();
+        rec.remove(rec.indexOf("id"));
+        rec.setValue("request_id",reqRec.value("id"));
+        rec.setValue("receiver",2);
+        rec.setValue("status",ackStatus);
+        model->insertRecord(-1, rec);
+
+        QSqlRecord rec2 = model->record();
+        rec2.remove(rec2.indexOf("id"));
+        rec2.setValue("request_id",reqRec.value("id"));
+        rec2.setValue("receiver",3);
+        rec2.setValue("status",ackStatus);
+        model->insertRecord(-1, rec2);
+    }
+    else
+    {
+        QSqlRecord rec = model->record();
+        rec.remove(rec.indexOf("id"));
+        rec.setValue("request_id",reqRec.value("id"));
+        rec.setValue("receiver",reviewerId);
+        rec.setValue("status",ackStatus);
+        model->insertRecord(-1, rec);
+    }
+    if(!model->submitAll())
+    {
+        qDebug() << "onSendRequest:model:insert ack -> SQL ERROR: " << model->lastError().text();
+        return;
     }
     //update request status-------------------------------------
     int reqStatus = m_dbm->getRequestStatusIndex("waiting");

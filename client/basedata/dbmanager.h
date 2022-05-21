@@ -24,6 +24,8 @@ public:
     int getRequestStatusIndex(QString _statusName) const;
     int getTableIndex(QString _tableName) const;
     int getAckStatusIndex(QString _statusName) const;
+    int getSelfId() const;
+    int getReviewerId() const;
 private:
     DBManager();
     QSqlDatabase db;
