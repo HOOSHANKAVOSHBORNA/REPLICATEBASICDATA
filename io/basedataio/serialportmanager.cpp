@@ -1,3 +1,4 @@
+#include <QDataStream>
 #include <QSerialPortInfo>
 #include "serialportmanager.h"
 
@@ -23,9 +24,9 @@ void SerialPortManager::sendData(const QByteArray &data)
 {
     m_serial->write(data);
     const qint64 bytesWritten = m_serial->write(data);
-    const QString request = QString::fromUtf8(data);
-    m_standardOutput <<tr("Write data: '%1' to port %2: %3.")
-                       .arg(request)
+    //const QString request = QString::fromUtf8(data);
+    m_standardOutput <<tr("Write data len: '%1' to port %2: %3.")
+                       .arg(bytesWritten)
                        .arg(m_serial->portName())
                        .arg(m_currentPortInfo.name)
                     << endl;
@@ -57,20 +58,21 @@ void SerialPortManager::readData()
     {
         return;
     }
-    qint32 len;
+
     if(!m_isHeaderRead)
     {
         const QByteArray data = m_serial->read(4);
-        len = data.toInt();
+        QDataStream dataStream(data);
+        dataStream >> m_readDataLen;
         m_isHeaderRead = true;
         m_readData.append(data);
     }
 
-    if (m_serial->bytesAvailable() < len)
+    if (m_serial->bytesAvailable() < m_readDataLen)
     {
         return;
     }
-    const QByteArray data = m_serial->read(len);
+    const QByteArray data = m_serial->read(m_readDataLen);
     m_readData.append(data);
     emit receiveData(m_currentPortInfo, m_readData);
     handleRead();
@@ -89,7 +91,8 @@ void SerialPortManager::handleError(QSerialPort::SerialPortError error)
                             .arg(m_serial->errorString())
                          << endl;
     }
-    if (error == QSerialPort::ReadError) {
+    if (error == QSerialPort::ReadError)
+    {
         m_standardOutput << QObject::tr("An I/O error occurred while reading "
                                         "the data from port %1: %2, error: %3")
                             .arg(m_serial->portName())
@@ -97,6 +100,7 @@ void SerialPortManager::handleError(QSerialPort::SerialPortError error)
                             .arg(m_serial->errorString())
                          << endl;
     }
+
 }
 
 
@@ -109,7 +113,7 @@ void SerialPortManager::handleRead()
 //                         << endl;
     } else {
         m_standardOutput <<tr("Read data: '%1' from port %2: %3.")
-                               .arg(QString::fromUtf8(m_readData))
+                               .arg(m_readData.length())
                                .arg(m_serial->portName())
                            .arg(m_currentPortInfo.name)
                             << endl;

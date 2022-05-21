@@ -98,9 +98,10 @@ void RequestManager::sendRequest(int request_id, int receiver)
     qint32 len = static_cast<qint32>(data.length()) + static_cast<qint32>(sizeof(type));
     stream << len ;//data len + type len(int8 = 1)
     stream << type;
-    stream << data;
+    //stream << data;
+    data.prepend(result);
     //-------------------------------
-    m_serialPortMap[receiver]->sendData(result);
+    m_serialPortMap[receiver]->sendData(data);
 }
 
 void RequestManager::sendAcknowledgment(int receiver, qint64 reqId)
@@ -154,7 +155,11 @@ QSqlRecord RequestManager::fromByteArray(QByteArray _data, QString _tableName)
 
 void RequestManager::onReceiveData(SerialPortManager::PortInfo info, QByteArray &data)
 {
-    qint8 type = data.at(4);
+    QDataStream dataStream(data);
+    qint8 type;
+    qint32 len;
+    dataStream >> len >> type;
+
     data.remove(0,5);
     if(type == DataType::Request)
     {
@@ -240,7 +245,7 @@ void RequestManager::onReceiveData(SerialPortManager::PortInfo info, QByteArray 
     }
     else
     {
-        m_standardOutput << tr("wrong received data is wrong: '%1' ")
+        m_standardOutput << tr("Received data is wrong: '%1' ")
                          .arg(QString(data.toHex()))
                          << endl;
     }

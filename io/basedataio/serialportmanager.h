@@ -36,6 +36,7 @@ private:
     PortInfo m_currentPortInfo;
     QByteArray m_readData;
     bool m_isHeaderRead;
+    qint32 m_readDataLen;
 };
 
 #endif // SERIALPORTMANAGER_H
