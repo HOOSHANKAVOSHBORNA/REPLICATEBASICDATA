@@ -24,7 +24,7 @@ public:
     void openPort();
     void closePort();
 signals:
-    void receiveData(PortInfo, const QByteArray &);
+    void receiveData(PortInfo, QByteArray &);
 private slots:
     void readData();
     void handleError(QSerialPort::SerialPortError);

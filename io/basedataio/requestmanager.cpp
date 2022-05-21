@@ -93,12 +93,33 @@ void RequestManager::sendRequest(int request_id, int receiver)
     QByteArray result;
     QDataStream stream(&result,QIODevice::ReadWrite);
     stream.setVersion(QDataStream::Qt_5_13);
-    qint8 type = 1;//request
+    qint8 type = DataType::Request;//request
     //data.prepend(type);
-    qint32 len = static_cast<qint32>(data.length());
-    stream << (len + 1);//data len + type len(int8 = 1)
+    qint32 len = static_cast<qint32>(data.length()) + static_cast<qint32>(sizeof(type));
+    stream << len ;//data len + type len(int8 = 1)
     stream << type;
     stream << data;
+    //-------------------------------
+    m_serialPortMap[receiver]->sendData(result);
+}
+
+void RequestManager::sendAcknowledgment(int receiver, qint64 reqId)
+{
+    if(!m_serialPortMap.contains(receiver))
+    {
+        m_standardOutput <<QObject::tr("Can not find connection to: %1.")
+                           .arg(receiver)
+                        << endl;
+        return;
+    }
+    QByteArray result;
+    QDataStream stream(&result,QIODevice::ReadWrite);
+    stream.setVersion(QDataStream::Qt_5_13);
+    qint8 type = DataType::Ack;
+    //data.prepend(type);
+    qint32 len = sizeof(reqId) + sizeof(type);
+    stream << len; //type len(int8 = 1)
+    stream << type;
     //-------------------------------
     m_serialPortMap[receiver]->sendData(result);
 }
@@ -131,7 +152,83 @@ QSqlRecord RequestManager::fromByteArray(QByteArray _data, QString _tableName)
     return rec;
 }
 
-void RequestManager::onReceiveData(SerialPortManager::PortInfo info, const QByteArray &data)
+void RequestManager::onReceiveData(SerialPortManager::PortInfo info, QByteArray &data)
 {
+    qint8 type = data.at(4);
+    data.remove(0,5);
+    if(type == DataType::Request)
+    {
+        QSqlRecord rec = fromByteArray(data, "request");
+        QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName("request");
+        qint64 reqId = rec.value("id").toLongLong();
+        rec.remove(rec.indexOf("id"));
+        qint64 tableId = rec.value("table_id").toLongLong();
+        qint64 createdAt = rec.value("created_at").toLongLong();
+        //already exist----------------------------------------------
+        model->setFilter(tr("table_id = %1 AND created_at = %2").arg(tableId).arg(createdAt));
+        model->select();
+        if(model->rowCount() > 0)
+        {
+            sendAcknowledgment(info.id, reqId);
+            return;
+        }
+        //----------------------------------------------
+        if(!model->insertRecord(-1, rec))
+        {
+            m_standardOutput << tr("Can not insert request '%1' that received from '%2'")
+                             .arg(reqId)
+                             .arg(info.name)
+                             << endl;
+            return;
+        }
+        if(!model->submitAll())
+        {
+            m_standardOutput << tr("Can not submit request '%1' that received from '%2' -> SQL ERROR:%3 ")
+                             .arg(reqId)
+                             .arg(info.name)
+                             .arg( model->lastError().text())
+                             << endl;
+            model->revertAll();
+            return;
+        }
+        //send ack
+        sendAcknowledgment(info.id, reqId);
+    }
+    else if(type == DataType::Ack)
+    {
+        QDataStream stream(data);
+        stream.setVersion(QDataStream::Qt_5_13);
+        quint64 reqId;
+        stream >> reqId;
+        QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName("acknowledgment");
+        int sendedIndex = m_dbm->getAckStatusIndex("sended");
+        model->setFilter(tr("request_id = %1 AND receiver = %2").arg(reqId).arg(info.id));
+        model->select();
+        if(model->rowCount() < 1)
+        {
+            m_standardOutput <<QObject::tr("Can not find request '%1' acknowledgment for receiver '%2'.")
+                               .arg(reqId)
+                               .arg(info.id)
+                            << endl;
+            return;
+        }
+        QSqlRecord rec = model->record(0);
+        rec.setValue("status", sendedIndex);
+        model->setRecord(0, rec);
+        if(!model->submitAll())
+        {
+            m_standardOutput << tr("Can not submit acknowledgment whit request id '%1' that received from '%2' -> SQL ERROR:%3 ")
+                             .arg(reqId)
+                             .arg(info.name)
+                             .arg( model->lastError().text())
+                             << endl;
+        }
+    }
+    else
+    {
+        m_standardOutput << tr("wrong received data is wrong: '%1' ")
+                         .arg(QString(data.toHex()))
+                         << endl;
+    }
 
 }
