@@ -8,6 +8,9 @@
 #include <QSqlQuery>
 #include <QDateTime>
 #include "createrequestdialog.h"
+#include "packetmanager.h"
+#include "packetmanager.h"
+#include "reviewdialog.h"
 #include "senddialog.h"
 #include <QSqlRelationalDelegate>
 
@@ -40,34 +43,6 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-QByteArray MainWindow::toByteArray(QSqlRecord _rec)
-{
-    QByteArray result;
-    QDataStream stream(&result,QIODevice::ReadWrite);
-    stream.setVersion(QDataStream::Qt_5_13);
-    for (int i = 0; i < _rec.count(); i++)
-    {
-        QSqlField field = _rec.field(i);
-        stream << field.value();
-    }
-    return result;
-}
-
-QSqlRecord MainWindow::fromByteArray(QByteArray _data, QString _tableName)
-{
-    QDataStream stream(_data);
-    stream.setVersion(QDataStream::Qt_5_13);
-    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(_tableName);
-    QSqlRecord rec = model->record();
-    for (int i = 0; i < rec.count(); i++)
-    {
-        QVariant field;
-        stream >> field;
-        rec.setValue(i,field);
-    }
-    return rec;
-}
-
 void MainWindow::onCustomMenuRequest(QPoint pos)
 {
     /* Create an object context menu */
@@ -77,11 +52,13 @@ void MainWindow::onCustomMenuRequest(QPoint pos)
    QAction * sendRequest = new QAction("Send", this);
    QAction * rollbackRequest = new QAction("Rollback", this);
    QAction * refreshRequest = new QAction("Refresh", this);
+   QAction * reviewRequest = new QAction("Review", this);
    /* Connect slot handlers for Action pop-up menu */
    connect(addRequest, SIGNAL(triggered()), this, SLOT(onAddRequest()));  // Call Handler dialog editing
    connect(sendRequest, SIGNAL(triggered()), this, SLOT(onSendRequest()));
    connect(rollbackRequest, SIGNAL(triggered()), this, SLOT(onRollbackRequest()));
    connect(refreshRequest, SIGNAL(triggered()), this, SLOT(onRefreshRequest()));
+   connect(reviewRequest, SIGNAL(triggered()), this, SLOT(onReviewRequest()));
    /* Set the actions to the menu */
    menu->addAction(addRequest);
    m_selectedRow = ui->tableView->rowAt(pos.y());
@@ -90,6 +67,7 @@ void MainWindow::onCustomMenuRequest(QPoint pos)
        menu->addAction(sendRequest);
        if(isRollbackable())
            menu->addAction(rollbackRequest);
+       menu->addAction(reviewRequest);
    }
    menu->addAction(refreshRequest);
    /* Call the context menu */
@@ -126,7 +104,7 @@ void MainWindow::onAddRequest()
             //valid index (delete index remove from model in submitAll)
             int index = insertIndex - deleteIndexList.length();
             QSqlRecord rec = model->record(index);
-            QByteArray data = toByteArray(rec);
+            QByteArray data = PacketManager::toByteArray(rec);
             QSqlRecord requestRec = m_requestModel->record();
             requestRec.remove(requestRec.indexOf("id"));
             requestRec.setValue(0, rec.field("id").value());
@@ -151,7 +129,7 @@ void MainWindow::onAddRequest()
         for(auto delStruct:deleteIndexList)
         {
             //QSqlRecord rec = model->record(delStruct.index);
-            QByteArray data = toByteArray(delStruct.rec);
+            QByteArray data = PacketManager::toByteArray(delStruct.rec);
             QSqlRecord requestRec = m_requestModel->record();
             requestRec.remove(requestRec.indexOf("id"));
             requestRec.setValue(0, delStruct.rec.field("id").value());
@@ -195,7 +173,7 @@ void MainWindow::onRollbackRequest()
     QString tableName = reqRec.value(2).toString();
     QString type = reqRec.value(5).toString();
     QByteArray data = reqRec.value("data").toByteArray();
-    QSqlRecord tableRec = fromByteArray(data, tableName);
+    QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
 //    qDebug()<< reqRec;
 //    qDebug()<< tableRec;
     QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(tableName);
@@ -295,5 +273,12 @@ void MainWindow::onSendRequest()
 void MainWindow::onRefreshRequest()
 {
     m_requestModel->select();
+}
+
+void MainWindow::onReviewRequest()
+{
+    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    ReviewDialog *reviewDialog = new ReviewDialog(reqRec, this);
+    int ret = reviewDialog->exec();
 }
 

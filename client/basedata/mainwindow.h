@@ -18,8 +18,6 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 private:
-    QByteArray toByteArray(QSqlRecord);
-    QSqlRecord fromByteArray(QByteArray, QString);
     void addInsertRequest();
     bool isRollbackable();
 private slots:
@@ -28,6 +26,7 @@ private slots:
     void onRollbackRequest();
     void onSendRequest();
     void onRefreshRequest();
+    void onReviewRequest();
 private:
     Ui::MainWindow *ui;
     QSqlRelationalTableModel* m_requestModel;

@@ -21,6 +21,8 @@ SOURCES += \
     dbmanager.cpp \
     main.cpp \
     mainwindow.cpp \
+    packetmanager.cpp \
+    reviewdialog.cpp \
     senddialog.cpp
 
 HEADERS += \
@@ -28,11 +30,14 @@ HEADERS += \
     datastrucs.h \
     dbmanager.h \
     mainwindow.h \
+    packetmanager.h \
+    reviewdialog.h \
     senddialog.h
 
 FORMS += \
     createrequestdialog.ui \
     mainwindow.ui \
+    reviewdialog.ui \
     senddialog.ui
 
 # Default rules for deployment.
