@@ -3,6 +3,7 @@
 #include <QMenu>
 #include<QSqlRecord>
 #include <QSqlField>
+#include <QDateTime>
 
 CreateRequestDialog::CreateRequestDialog(QWidget *parent) :
     QDialog(parent),
@@ -70,6 +71,9 @@ void CreateRequestDialog::onComboCurrentIndexChanged(QString _tableName)
 {
     m_model = m_dbm->getRelationalModelTableName(_tableName);
     ui->tableView->setModel(m_model);
+
+    QSqlRecord record = m_model->record();
+    ui->tableView->hideColumn(record.indexOf("id"));
     //clear changed data----------
     m_insertIndexList.clear();
     m_deleteIndexList.clear();
@@ -79,10 +83,15 @@ void CreateRequestDialog::onInsertRow()
 {
     QSqlRecord record = m_model->record();
     record.remove(record.indexOf("id"));
-    //record.setValue("firstname", f);
+    qint64 time = QDateTime::currentMSecsSinceEpoch();
+    record.setValue("created_at", time);
     if(m_model->insertRecord(-1, record))
     {
         m_insertIndexList.append(m_model->rowCount()- 1);
+        //color row
+        QModelIndex index = m_model->index(m_model->rowCount()- 1, 2);
+        m_model->setData(index, QColor(Qt::red), Qt::BackgroundRole);
+        ui->tableView->update();
     }
 }
 

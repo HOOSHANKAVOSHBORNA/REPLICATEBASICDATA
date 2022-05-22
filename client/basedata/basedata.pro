@@ -20,17 +20,20 @@ SOURCES += \
     createrequestdialog.cpp \
     dbmanager.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    senddialog.cpp
 
 HEADERS += \
     createrequestdialog.h \
     datastrucs.h \
     dbmanager.h \
-    mainwindow.h
+    mainwindow.h \
+    senddialog.h
 
 FORMS += \
     createrequestdialog.ui \
-    mainwindow.ui
+    mainwindow.ui \
+    senddialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

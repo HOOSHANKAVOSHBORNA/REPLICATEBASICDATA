@@ -21,11 +21,13 @@ private:
     QByteArray toByteArray(QSqlRecord);
     QSqlRecord fromByteArray(QByteArray, QString);
     void addInsertRequest();
+    bool isRollbackable();
 private slots:
     void onCustomMenuRequest(QPoint pos);
     void onAddRequest();
     void onRollbackRequest();
     void onSendRequest();
+    void onRefreshRequest();
 private:
     Ui::MainWindow *ui;
     QSqlRelationalTableModel* m_requestModel;

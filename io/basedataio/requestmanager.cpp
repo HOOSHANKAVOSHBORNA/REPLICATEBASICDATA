@@ -16,7 +16,7 @@ RequestManager::RequestManager(QObject *parent):
     //init and open port
     initSerialPorts();
     connect(&m_timer, &QTimer::timeout, this, &RequestManager::checkAcknowledgment);
-    m_timer.start(5000);
+    m_timer.start(7000);
 
 }
 

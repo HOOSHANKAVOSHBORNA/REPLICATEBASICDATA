@@ -8,6 +8,7 @@
 #include <QSqlQuery>
 #include <QDateTime>
 #include "createrequestdialog.h"
+#include "senddialog.h"
 #include <QSqlRelationalDelegate>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -28,62 +29,14 @@ MainWindow::MainWindow(QWidget *parent)
     m_requestModel = m_dbm->getRequestRelationalModel();
     ui->tableView->setModel(m_requestModel);
     ui->tableView->setItemDelegate(new QSqlRelationalDelegate(ui->tableView));
+    ui->tableView->hideColumn(0);//id
+    ui->tableView->hideColumn(7);//data
 
-//    QSqlRecord requestRec = m_requestModel->record(0);s
-//    qDebug() <<"requestRec:"<<requestRec;
-//    qDebug()<<m_requestModel->data(m_requestModel->index(0, 2));
-
-//    QList<Request> *requestList =  dbm.loadRequests();
-//    Request req = requestList->at(0);
-//    QByteArray reqData = req.toByteArray();
-//    Request req1;
-//    req1.fromByteArray(&reqData);
-
-//    ui->tableWidget->setRowCount(requestList->length());
-//    ui->tableWidget->setColumnCount(10);
-//    ui->tableWidget->setHorizontalHeaderLabels({"id","table_id", "table_name_id",
-//                                              "applicant", "reviewer", "type",
-//                                             "status", "data", "description","created_at"});
-//    for (int i = 0; i<requestList->length(); i++) {
-//        QTableWidgetItem *newItem = new QTableWidgetItem(tr("%1").arg(requestList->at(i).id));
-//        ui->tableWidget->setItem(i, 0, newItem);
-//        QTableWidgetItem *newItem1 = new QTableWidgetItem(tr("%1").arg(requestList->at(i).table_id));
-//        ui->tableWidget->setItem(i, 1, newItem1);
-//        QTableWidgetItem *newItem2 = new QTableWidgetItem(tr("%1").arg(requestList->at(i).table_name_id));
-//        ui->tableWidget->setItem(i, 2, newItem2);
-//        QTableWidgetItem *newItem3 = new QTableWidgetItem(tr("%1").arg(requestList->at(i).applicant));
-//        ui->tableWidget->setItem(i, 3, newItem3);
-//        QTableWidgetItem *newItem4 = new QTableWidgetItem(tr("%1").arg(requestList->at(i).reviewer));
-//        ui->tableWidget->setItem(i, 4, newItem4);
-//        QTableWidgetItem *newItem5 = new QTableWidgetItem(tr("%1").arg(requestList->at(i).type));
-//        ui->tableWidget->setItem(i, 5, newItem5);
-//        QTableWidgetItem *newItem6 = new QTableWidgetItem(tr("%1").arg(requestList->at(i).status));
-//        ui->tableWidget->setItem(i, 6, newItem6);
-//        QTableWidgetItem *newItem7 = new QTableWidgetItem(QString(requestList->at(i).data));
-//        ui->tableWidget->setItem(i, 7, newItem7);
-//        QTableWidgetItem *newItem8 = new QTableWidgetItem(tr("%1").arg(requestList->at(i).description));
-//        ui->tableWidget->setItem(i, 8, newItem8);
-//        QTableWidgetItem *newItem9 = new QTableWidgetItem(tr("%1").arg(requestList->at(i).created_at));
-//        ui->tableWidget->setItem(i, 9, newItem9);
-////        qDebug("id:%ld", req.id);
-////        qDebug("table_id:%ld",req.table_id );
-////        qDebug("table_name_id:%d",req.table_name_id );
-////        qDebug("applicant:%d",req.applicant );
-////        qDebug("reviewer:%d",req.reviewer);
-////        qDebug("type:%d",req.type );
-////        qDebug("status:%d",req.status);
-////        QString strData(req.data);
-////        qDebug() <<"data:" << strData;
-//////        QJsonDocument doc(req.description);
-//////        QString strDescription(doc.toJson(QJsonDocument::Compact));
-////        qDebug()<<"description:"<< req.description;
-////        qDebug("created_at:%ld",req.created_at);
-//    }
-    //dbm->closeConnection();
 }
 
 MainWindow::~MainWindow()
 {
+    //m_dbm->closeConnection();
     delete ui;
 }
 
@@ -123,18 +76,22 @@ void MainWindow::onCustomMenuRequest(QPoint pos)
    QAction * addRequest = new QAction("Add", this);
    QAction * sendRequest = new QAction("Send", this);
    QAction * rollbackRequest = new QAction("Rollback", this);
+   QAction * refreshRequest = new QAction("Refresh", this);
    /* Connect slot handlers for Action pop-up menu */
    connect(addRequest, SIGNAL(triggered()), this, SLOT(onAddRequest()));  // Call Handler dialog editing
    connect(sendRequest, SIGNAL(triggered()), this, SLOT(onSendRequest()));
    connect(rollbackRequest, SIGNAL(triggered()), this, SLOT(onRollbackRequest()));
+   connect(refreshRequest, SIGNAL(triggered()), this, SLOT(onRefreshRequest()));
    /* Set the actions to the menu */
    menu->addAction(addRequest);
    m_selectedRow = ui->tableView->rowAt(pos.y());
    if(m_selectedRow != -1)
    {
        menu->addAction(sendRequest);
-       menu->addAction(rollbackRequest);
+       if(isRollbackable())
+           menu->addAction(rollbackRequest);
    }
+   menu->addAction(refreshRequest);
    /* Call the context menu */
    menu->popup(ui->tableView->viewport()->mapToGlobal(pos));
 }
@@ -224,6 +181,14 @@ void MainWindow::onAddRequest()
 
 }
 
+bool MainWindow::isRollbackable()
+{
+    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    QString status = reqRec.value(6).toString();
+    if(status == "checking" || status == "rejected")
+        return true;
+    return false;
+}
 void MainWindow::onRollbackRequest()
 {
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
@@ -234,6 +199,8 @@ void MainWindow::onRollbackRequest()
 //    qDebug()<< reqRec;
 //    qDebug()<< tableRec;
     QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(tableName);
+    if(!isRollbackable())
+        return;
     if(type == "insert")
     {
         model->setFilter("id = " + tableRec.value("id").toString());
@@ -278,23 +245,28 @@ void MainWindow::onSendRequest()
     int reviewerId = m_dbm->getReviewerId();
     int selfId = m_dbm->getSelfId();
     int ackStatus = m_dbm->getAckStatusIndex("pending");
-    if(selfId == reviewerId)
+    if(selfId == reviewerId)//is center
     {
-        QSqlRecord rec = model->record();
-        rec.remove(rec.indexOf("id"));
-        rec.setValue("request_id",reqRec.value("id"));
-        rec.setValue("receiver",2);
-        rec.setValue("status",ackStatus);
-        model->insertRecord(-1, rec);
+        SendDialog *sendDialog = new SendDialog(this);
+        int ret = sendDialog->exec();
 
-        QSqlRecord rec2 = model->record();
-        rec2.remove(rec2.indexOf("id"));
-        rec2.setValue("request_id",reqRec.value("id"));
-        rec2.setValue("receiver",3);
-        rec2.setValue("status",ackStatus);
-        model->insertRecord(-1, rec2);
+        if(ret == QDialog::Accepted)
+        {
+            QList<int> selectedIds = sendDialog->getSelectedId();
+            for(int id:selectedIds)
+            {
+                QSqlRecord rec = model->record();
+                rec.remove(rec.indexOf("id"));
+                rec.setValue("request_id",reqRec.value("id"));
+                rec.setValue("receiver",id);
+                rec.setValue("status",ackStatus);
+                model->insertRecord(-1, rec);
+            }
+        }
+        else
+            return;
     }
-    else
+    else//is client and send to center
     {
         QSqlRecord rec = model->record();
         rec.remove(rec.indexOf("id"));
@@ -318,5 +290,10 @@ void MainWindow::onSendRequest()
         qDebug() << "onSendRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
         m_requestModel->revertAll();
     }
+}
+
+void MainWindow::onRefreshRequest()
+{
+    m_requestModel->select();
 }
 
