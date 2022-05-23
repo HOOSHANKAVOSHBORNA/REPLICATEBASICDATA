@@ -2,6 +2,7 @@
 #include "ui_senddialog.h"
 #include <QSqlRecord>
 #include <QCheckBox>
+#include <QTableWidgetItem>
 
 SendDialog::SendDialog(QWidget *parent) :
     QDialog(parent),

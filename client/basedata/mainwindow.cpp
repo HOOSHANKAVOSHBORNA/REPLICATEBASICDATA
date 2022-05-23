@@ -114,8 +114,8 @@ void MainWindow::onAddRequest()
             requestRec.setValue(4, type);//insert
             requestRec.setValue(5, status);//checking
             requestRec.setValue(6, data);
-            requestRec.setValue(7, "{}");
-            requestRec.setValue(8, time);
+            requestRec.setValue(7, time);
+            requestRec.setValue(8, "{}");
             //qDebug() <<"requestRec:"<<requestRec;
             if(!m_requestModel->insertRecord(-1, requestRec))
             {
@@ -139,8 +139,8 @@ void MainWindow::onAddRequest()
             requestRec.setValue(4, type);//delete
             requestRec.setValue(5, status);//checking
             requestRec.setValue(6, data);
-            requestRec.setValue(7, "{}");
-            requestRec.setValue(8, time);
+            requestRec.setValue(7, time);
+            requestRec.setValue(8, "{}");
             //qDebug() <<"requestRec:"<<requestRec;
             if(!m_requestModel->insertRecord(-1, requestRec))
             {
@@ -280,5 +280,6 @@ void MainWindow::onReviewRequest()
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
     ReviewDialog *reviewDialog = new ReviewDialog(reqRec, this);
     int ret = reviewDialog->exec();
+    qDebug()<<ret;
 }
 
