@@ -4,7 +4,7 @@
 #include <QCheckBox>
 #include <QTableWidgetItem>
 
-SendDialog::SendDialog(QWidget *parent) :
+SendDialog::SendDialog(int requestId, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::SendDialog),
     m_dbm(DBManager::getDBManager())
@@ -28,6 +28,11 @@ SendDialog::SendDialog(QWidget *parent) :
             QTableWidgetItem *itemId = new QTableWidgetItem(QString::number(id));
             QTableWidgetItem *itemName = new QTableWidgetItem(name);
             QCheckBox *checkBox = new QCheckBox();
+            if(m_dbm->isSended(requestId, id))
+            {
+                checkBox->setChecked(true);
+                checkBox->setDisabled(true);
+            }
             int row = ui->tableWidget->rowCount();
             ui->tableWidget->insertRow(row);
             ui->tableWidget->setCellWidget(row,0,checkBox);
@@ -48,7 +53,7 @@ QList<int> SendDialog::getSelectedId() const
     for (int i = 0; i < ui->tableWidget->rowCount(); ++i)
     {
         QCheckBox *checkBox = static_cast<QCheckBox*>(ui->tableWidget->cellWidget(i, 0));
-        if(checkBox->isChecked())
+        if(checkBox->isEnabled() && checkBox->isChecked())
         {
             int id = ui->tableWidget->item(i,1)->text().toInt();
             results.append(id);
@@ -60,5 +65,6 @@ QList<int> SendDialog::getSelectedId() const
 void SendDialog::onCellClicked(int row, int)
 {
     QCheckBox *checkBox = static_cast<QCheckBox*>(ui->tableWidget->cellWidget(row, 0));
-    checkBox->setChecked(!checkBox->isChecked());
+    if(checkBox->isEnabled())
+        checkBox->setChecked(!checkBox->isChecked());
 }

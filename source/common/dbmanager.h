@@ -28,6 +28,9 @@ public:
     int getAckStatusIndex(QString _statusName) const;
     int getSelfId() const;
     int getReviewerId() const;
+    bool isReviewer() const;
+    bool isSended(int reqId, int reciver) const;
+    bool isSended(int reqId) const;
 private:
     DBManager();
     QSqlDatabase db;

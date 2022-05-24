@@ -62,10 +62,12 @@ void MainWindow::onCustomMenuRequest(QPoint pos)
    m_selectedRow = ui->tableView->rowAt(pos.y());
    if(m_selectedRow != -1)
    {
-       menu->addAction(sendRequest);
+       if(m_dbm->isReviewer() || !isSended())
+           menu->addAction(sendRequest);
        if(isRollbackable())
            menu->addAction(rollbackRequest);
-       menu->addAction(reviewRequest);
+       if(!isSended())
+           menu->addAction(reviewRequest);
    }
    menu->addAction(refreshRequest);
    /* Call the context menu */
@@ -166,6 +168,13 @@ bool MainWindow::isRollbackable()
         return true;
     return false;
 }
+
+bool MainWindow::isSended()
+{
+    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    int requestId = reqRec.value("id").toInt();
+    return m_dbm->isSended(requestId);
+}
 void MainWindow::onRollbackRequest()
 {
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
@@ -220,11 +229,11 @@ void MainWindow::onSendRequest()
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
     QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName("acknowledgment");
     int reviewerId = m_dbm->getReviewerId();
-    int selfId = m_dbm->getSelfId();
     int ackStatus = m_dbm->getAckStatusIndex("pending");
-    if(selfId == reviewerId)//is center
+    int requestId = reqRec.value("id").toInt();
+    if(m_dbm->isReviewer())
     {
-        SendDialog *sendDialog = new SendDialog(this);
+        SendDialog *sendDialog = new SendDialog(requestId, this);
         int ret = sendDialog->exec();
 
         if(ret == QDialog::Accepted)
@@ -243,7 +252,7 @@ void MainWindow::onSendRequest()
         else
             return;
     }
-    else//is client and send to center
+    else//is client and send to reviewer
     {
         QSqlRecord rec = model->record();
         rec.remove(rec.indexOf("id"));
@@ -258,14 +267,18 @@ void MainWindow::onSendRequest()
         return;
     }
     //update request status-------------------------------------
-    int reqStatus = m_dbm->getRequestStatusIndex("waiting");
     QSqlRecord curentRec = m_requestModel->record(m_selectedRow);
-    curentRec.setValue(6, reqStatus);
-    m_requestModel->setRecord(m_selectedRow, curentRec);
-    if(!m_requestModel->submitAll())
+    QString status = curentRec.value(6).toString();
+    if(status == "checking")
     {
-        qDebug() << "onSendRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
-        m_requestModel->revertAll();
+        int reqStatus = m_dbm->getRequestStatusIndex("waiting");
+        curentRec.setValue(6, reqStatus);
+        m_requestModel->setRecord(m_selectedRow, curentRec);
+        if(!m_requestModel->submitAll())
+        {
+            qDebug() << "onSendRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
+            m_requestModel->revertAll();
+        }
     }
 }
 

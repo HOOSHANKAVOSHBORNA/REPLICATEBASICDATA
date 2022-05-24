@@ -20,6 +20,7 @@ public:
 private:
     void addInsertRequest();
     bool isRollbackable();
+    bool isSended();
 private slots:
     void onCustomMenuRequest(QPoint pos);
     void onAddRequest();

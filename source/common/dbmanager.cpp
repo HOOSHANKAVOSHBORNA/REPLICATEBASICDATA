@@ -249,6 +249,37 @@ int DBManager::getReviewerId() const
     return 1;
 }
 
+bool DBManager::isReviewer() const
+{
+    if(getSelfId() == getReviewerId())
+        return true;
+    return false;
+}
+
+bool DBManager::isSended(int reqId, int receiver) const
+{
+    QSqlRelationalTableModel* model = new QSqlRelationalTableModel();
+    model->setTable("acknowledgment");
+    model->setEditStrategy(QSqlTableModel::OnManualSubmit);
+    model->setFilter(QObject::tr("request_id = %1 AND receiver = %2").arg(reqId).arg(receiver));
+    model->select();
+    if(model->rowCount() == 0)
+        return false;
+    return true;
+}
+
+bool DBManager::isSended(int reqId) const
+{
+    QSqlRelationalTableModel* model = new QSqlRelationalTableModel();
+    model->setTable("acknowledgment");
+    model->setEditStrategy(QSqlTableModel::OnManualSubmit);
+    model->setFilter(QObject::tr("request_id = %1").arg(reqId));
+    model->select();
+    if(model->rowCount() == 0)
+        return false;
+    return true;
+}
+
 
 DBManager *DBManager::getDBManager()
 {

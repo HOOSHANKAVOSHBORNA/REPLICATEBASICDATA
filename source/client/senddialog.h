@@ -14,7 +14,7 @@ class SendDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit SendDialog(QWidget *parent = nullptr);
+    explicit SendDialog(int requestId, QWidget *parent = nullptr);
     ~SendDialog();
     QList<int> getSelectedId() const;
 private slots:
