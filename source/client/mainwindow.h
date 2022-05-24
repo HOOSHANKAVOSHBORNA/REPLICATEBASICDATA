@@ -1,10 +1,10 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "dbmanager.h"
-
 #include <QMainWindow>
 #include <QSqlRelationalTableModel>
+
+#include "../common/dbmanager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }

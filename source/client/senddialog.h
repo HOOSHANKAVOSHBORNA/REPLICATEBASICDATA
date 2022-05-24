@@ -1,9 +1,9 @@
 #ifndef SENDDIALOG_H
 #define SENDDIALOG_H
 
-#include "dbmanager.h"
-
 #include <QDialog>
+
+#include "../common/dbmanager.h"
 
 namespace Ui {
 class SendDialog;

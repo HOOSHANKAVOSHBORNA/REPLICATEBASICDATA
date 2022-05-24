@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "dbmanager.h"
 #include <QDebug>
 #include <QJsonDocument>
 #include <QSqlRecord>
@@ -8,11 +7,10 @@
 #include <QSqlQuery>
 #include <QDateTime>
 #include "createrequestdialog.h"
-#include "packetmanager.h"
-#include "packetmanager.h"
 #include "reviewdialog.h"
 #include "senddialog.h"
 #include <QSqlRelationalDelegate>
+#include "../common/packetmanager.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)

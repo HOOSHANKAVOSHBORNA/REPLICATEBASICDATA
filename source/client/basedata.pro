@@ -18,19 +18,15 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     createrequestdialog.cpp \
-    dbmanager.cpp \
     main.cpp \
     mainwindow.cpp \
-    packetmanager.cpp \
     reviewdialog.cpp \
     senddialog.cpp
 
 HEADERS += \
     createrequestdialog.h \
     datastrucs.h \
-    dbmanager.h \
     mainwindow.h \
-    packetmanager.h \
     reviewdialog.h \
     senddialog.h
 
@@ -55,3 +51,9 @@ first.depends = $(first) copydata
 export(first.depends)
 export(copydata.commands)
 QMAKE_EXTRA_TARGETS += first copydata
+
+
+unix:!macx: LIBS += -L$$OUT_PWD/../common/ -lcommon
+
+INCLUDEPATH += $$PWD/../common
+DEPENDPATH += $$PWD/../common

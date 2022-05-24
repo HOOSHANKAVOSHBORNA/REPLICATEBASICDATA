@@ -4,7 +4,7 @@
 #include <QDialog>
 #include <QList>
 #include <QSqlRecord>
-#include "dbmanager.h"
+#include "../common/dbmanager.h"
 
 namespace Ui {
 class CreateRequestDialog;

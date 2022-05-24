@@ -1,10 +1,10 @@
 #ifndef REVIEWDIALOG_H
 #define REVIEWDIALOG_H
 
-#include "dbmanager.h"
-
 #include <QDialog>
 #include <QSqlRecord>
+
+#include "../common/dbmanager.h"
 
 namespace Ui {
 class ReviewDialog;

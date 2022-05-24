@@ -7,7 +7,10 @@
 #include <QSqlError>
 #include <QSqlQueryModel>
 #include <QSqlRelationalTableModel>
-#include "datastrucs.h"
+#include <QSettings>
+#include <QFile>
+#include <QDebug>
+#include <QSqlRecord>
 
 class DBManager
 {
@@ -15,7 +18,6 @@ public:
     static DBManager *getDBManager();
     bool openConnection();
     void closeConnection();
-    QList<Request>* loadRequests();
     QSqlQueryModel* getRequestModel();
     QSqlRelationalTableModel* getRequestRelationalModel();
     QSqlQueryModel* getTableNameModel();
@@ -31,5 +33,4 @@ private:
     QSqlDatabase db;
     static DBManager *instance;
 };
-
 #endif // DBMANAGER_H

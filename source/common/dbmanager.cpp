@@ -1,10 +1,4 @@
 #include "dbmanager.h"
-#include <QDebug>
-#include <QSqlRecord>
-#include <QFile>
-#include <QSettings>
-#include <QDir>
-#include <QSqlQuery>
 
 DBManager* DBManager::instance= nullptr;
 DBManager::DBManager()
@@ -60,34 +54,34 @@ void DBManager::closeConnection()
     db.close();
 }
 
-QList<Request> *DBManager::loadRequests()
-{
-    QList<Request>* result = new QList<Request>();
-    QSqlQuery query(db);
-    QString sql = "SELECT * FROM request;";
-    if (query.exec(sql) != false) {
-        while (query.next())
-        {
-            Request req;
-            QSqlRecord rec = query.record();
-            req.id = query.value(rec.indexOf("id")).toLongLong();
-            req.table_id = query.value(rec.indexOf("table_id")).toLongLong();
-            req.table_name = query.value(rec.indexOf("table_name")).toInt();
-            req.applicant = query.value(rec.indexOf("applicant")).toInt();
-            req.reviewer = query.value(rec.indexOf("reviewer")).toInt();
-            req.type = (int16_t)query.value(rec.indexOf("type")).toInt();
-            req.status = (int16_t)query.value(rec.indexOf("status")).toInt();
-            req.data = query.value(rec.indexOf("data")).toByteArray();
-            req.description = query.value(rec.indexOf("description")).toString();
-            req.created_at = query.value(rec.indexOf("created_at")).toLongLong();
+//QList<Request> *DBManager::loadRequests()
+//{
+//    QList<Request>* result = new QList<Request>();
+//    QSqlQuery query(db);
+//    QString sql = "SELECT * FROM request;";
+//    if (query.exec(sql) != false) {
+//        while (query.next())
+//        {
+//            Request req;
+//            QSqlRecord rec = query.record();
+//            req.id = query.value(rec.indexOf("id")).toLongLong();
+//            req.table_id = query.value(rec.indexOf("table_id")).toLongLong();
+//            req.table_name = query.value(rec.indexOf("table_name")).toInt();
+//            req.applicant = query.value(rec.indexOf("applicant")).toInt();
+//            req.reviewer = query.value(rec.indexOf("reviewer")).toInt();
+//            req.type = (int16_t)query.value(rec.indexOf("type")).toInt();
+//            req.status = (int16_t)query.value(rec.indexOf("status")).toInt();
+//            req.data = query.value(rec.indexOf("data")).toByteArray();
+//            req.description = query.value(rec.indexOf("description")).toString();
+//            req.created_at = query.value(rec.indexOf("created_at")).toLongLong();
 
-            result->append(req);
-        }
-    }
-    else
-        qDebug() << "SQL ERROR: " << query.lastError().text();
-    return result;
-}
+//            result->append(req);
+//        }
+//    }
+//    else
+//        qDebug() << "SQL ERROR: " << query.lastError().text();
+//    return result;
+//}
 
 QSqlQueryModel *DBManager::getRequestModel()
 {

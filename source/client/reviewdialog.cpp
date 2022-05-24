@@ -1,7 +1,7 @@
-#include "packetmanager.h"
+
 #include "reviewdialog.h"
 #include "ui_reviewdialog.h"
-
+#include "../common/packetmanager.h"
 #include <QCheckBox>
 
 ReviewDialog::ReviewDialog(QSqlRecord rec, QWidget *parent) :
