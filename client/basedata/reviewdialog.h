@@ -17,6 +17,7 @@ class ReviewDialog : public QDialog
 public:
     explicit ReviewDialog(QSqlRecord rec, QWidget *parent = nullptr);
     ~ReviewDialog();
+    QString getDescription() const;
 private:
     void filter();
 private slots:
@@ -25,9 +26,7 @@ private slots:
     void onTextChanged(const QString &);
     void onCurrentIndexChanged(int);
     void on_btnAccept_clicked();
-
     void on_btnReject_clicked();
-
     void on_btnClose_clicked();
 
 private:

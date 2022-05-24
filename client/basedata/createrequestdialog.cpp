@@ -41,6 +41,11 @@ QList<CreateRequestDialog::DeleteStruct> CreateRequestDialog::getDeleteIndexList
     return m_deleteIndexList;
 }
 
+QString CreateRequestDialog::getDescription() const
+{
+    return ui->txtDescription->text();
+}
+
 CreateRequestDialog::~CreateRequestDialog()
 {
     delete ui;

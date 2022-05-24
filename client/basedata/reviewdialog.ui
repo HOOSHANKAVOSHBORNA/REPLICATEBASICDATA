@@ -14,7 +14,26 @@
    <string>Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="7" column="0" colspan="15">
+   <item row="5" column="0" colspan="5">
+    <widget class="QTableWidget" name="tableWidgetReq">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>112</height>
+      </size>
+     </property>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>true</bool>
+     </attribute>
+    </widget>
+   </item>
+   <item row="7" column="0" colspan="5">
     <widget class="QTableView" name="tableViewBase">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -36,63 +55,14 @@
      </attribute>
     </widget>
    </item>
-   <item row="8" column="0">
-    <widget class="QLabel" name="label_7">
+   <item row="6" column="0">
+    <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>Description:</string>
+      <string>Based table</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="0" colspan="15">
-    <widget class="Line" name="line_2">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="0" colspan="15">
-    <widget class="QTableWidget" name="tableWidgetReq">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>112</height>
-      </size>
-     </property>
-     <attribute name="horizontalHeaderStretchLastSection">
-      <bool>true</bool>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="0" colspan="15">
-    <widget class="QPlainTextEdit" name="txtDescription">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>50</height>
-      </size>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0" colspan="9">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>request</string>
-     </property>
-    </widget>
-   </item>
-   <item row="11" column="0" colspan="15">
+   <item row="11" column="0" colspan="5">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <spacer name="horizontalSpacer">
@@ -130,14 +100,44 @@
      </item>
     </layout>
    </item>
-   <item row="6" column="0">
-    <widget class="QLabel" name="label_2">
+   <item row="4" column="0" colspan="3">
+    <widget class="QLabel" name="label">
      <property name="text">
-      <string>Based table</string>
+      <string>request</string>
      </property>
     </widget>
    </item>
-   <item row="0" column="0" colspan="15">
+   <item row="6" column="1" colspan="3">
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <property name="topMargin">
+      <number>5</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>Field</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboField"/>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="txtSearch"/>
+     </item>
+    </layout>
+   </item>
+   <item row="8" column="0">
+    <widget class="QLabel" name="label_7">
+     <property name="text">
+      <string>Description:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0" colspan="5">
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QLabel" name="label_5">
@@ -207,28 +207,15 @@
      </item>
     </layout>
    </item>
-   <item row="6" column="4" colspan="10">
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <property name="topMargin">
-      <number>5</number>
+   <item row="3" column="0" colspan="5">
+    <widget class="Line" name="line_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
      </property>
-     <property name="bottomMargin">
-      <number>0</number>
-     </property>
-     <item>
-      <widget class="QLabel" name="label_6">
-       <property name="text">
-        <string>Field</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="comboField"/>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="txtSearch"/>
-     </item>
-    </layout>
+    </widget>
+   </item>
+   <item row="9" column="0" colspan="5">
+    <widget class="QLineEdit" name="txtDescription"/>
    </item>
   </layout>
  </widget>

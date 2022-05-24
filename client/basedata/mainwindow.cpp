@@ -85,6 +85,7 @@ void MainWindow::onAddRequest()
         QSqlRelationalTableModel *model = createRequest->getModel();
         QList<int> insertIndexList = createRequest->getInsertIndexList();
         QList<CreateRequestDialog::DeleteStruct> deleteIndexList = createRequest->getDeleteIndexList();
+        QString description = createRequest->getDescription();
         //--insert table changes---------------------------------------------
         if(!model->submitAll())
         {
@@ -115,7 +116,7 @@ void MainWindow::onAddRequest()
             requestRec.setValue(5, status);//checking
             requestRec.setValue(6, data);
             requestRec.setValue(7, time);
-            requestRec.setValue(8, "{}");
+            requestRec.setValue(8, description);
             //qDebug() <<"requestRec:"<<requestRec;
             if(!m_requestModel->insertRecord(-1, requestRec))
             {
@@ -140,7 +141,7 @@ void MainWindow::onAddRequest()
             requestRec.setValue(5, status);//checking
             requestRec.setValue(6, data);
             requestRec.setValue(7, time);
-            requestRec.setValue(8, "{}");
+            requestRec.setValue(8, description);
             //qDebug() <<"requestRec:"<<requestRec;
             if(!m_requestModel->insertRecord(-1, requestRec))
             {
@@ -277,9 +278,35 @@ void MainWindow::onRefreshRequest()
 
 void MainWindow::onReviewRequest()
 {
-    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
-    ReviewDialog *reviewDialog = new ReviewDialog(reqRec, this);
+    QSqlRecord curentRec = m_requestModel->record(m_selectedRow);
+    ReviewDialog *reviewDialog = new ReviewDialog(curentRec, this);
     int ret = reviewDialog->exec();
-    qDebug()<<ret;
+    QString description = reviewDialog->getDescription();
+    if(ret == 1)//accept
+    {
+        //update request status-------------------------------------
+        int reqStatus = m_dbm->getRequestStatusIndex("accepted");
+        curentRec.setValue(6, reqStatus);
+        curentRec.setValue(10, description);
+        m_requestModel->setRecord(m_selectedRow, curentRec);
+        if(!m_requestModel->submitAll())
+        {
+            qDebug() << "onReviewRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
+            m_requestModel->revertAll();
+        }
+    }
+    else if(ret == -1)//reject
+    {
+        //update request status-------------------------------------
+        int reqStatus = m_dbm->getRequestStatusIndex("rejected");
+        curentRec.setValue(6, reqStatus);
+        curentRec.setValue(10, description);
+        m_requestModel->setRecord(m_selectedRow, curentRec);
+        if(!m_requestModel->submitAll())
+        {
+            qDebug() << "onReviewRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
+            m_requestModel->revertAll();
+        }
+    }
 }
 

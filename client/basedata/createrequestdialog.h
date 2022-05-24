@@ -24,6 +24,7 @@ public:
     QSqlRelationalTableModel* getModel()const;
     QList<int> getInsertIndexList()const;
     QList<DeleteStruct> getDeleteIndexList()const;
+    QString getDescription()const;
     ~CreateRequestDialog();
 private slots:
     void onCustomMenuRequest(QPoint pos);

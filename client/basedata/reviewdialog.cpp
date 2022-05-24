@@ -55,6 +55,11 @@ ReviewDialog::~ReviewDialog()
     delete ui;
 }
 
+QString ReviewDialog::getDescription() const
+{
+    return ui->txtDescription->text();
+}
+
 void ReviewDialog::filter()
 {
     QString strFilter = "";
