@@ -19,15 +19,21 @@ public:
     ~MainWindow();
 private:
     void addInsertRequest();
-    bool isRollbackable();
-    bool isSended();
+    bool isDeleteable();
+    bool isReviewable();
+    bool isSendable();
+    bool isApplyable();
+
+    void insertRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model);
+    void deleteRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model);
 private slots:
     void onCustomMenuRequest(QPoint pos);
     void onAddRequest();
-    void onRollbackRequest();
+    void onDeleteRequest();
     void onSendRequest();
     void onRefreshRequest();
     void onReviewRequest();
+    void onApplyRequest();
 private:
     Ui::MainWindow *ui;
     QSqlRelationalTableModel* m_requestModel;

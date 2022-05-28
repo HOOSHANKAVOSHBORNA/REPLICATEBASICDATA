@@ -31,6 +31,8 @@ public:
     bool isReviewer() const;
     bool isSended(int reqId, int reciver) const;
     bool isSended(int reqId) const;
+    bool isApplicant(int reqId) const;
+    bool hasApplied(int reqId) const;
 private:
     DBManager();
     QSqlDatabase db;

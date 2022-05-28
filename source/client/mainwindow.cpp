@@ -15,61 +15,66 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , m_dbm(DBManager::getDBManager())
 {
     ui->setupUi(this);
 
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onCustomMenuRequest(QPoint)));
 
-    m_dbm  = DBManager::getDBManager();
-    m_dbm->openConnection();
-
-//    QSqlQueryModel* model = dbm.getRequestModel();
-//    ui->tableView->setModel(model);
-
     m_requestModel = m_dbm->getRequestRelationalModel();
     ui->tableView->setModel(m_requestModel);
     ui->tableView->setItemDelegate(new QSqlRelationalDelegate(ui->tableView));
     ui->tableView->hideColumn(0);//id
     ui->tableView->hideColumn(7);//data
+    ui->tableView->hideColumn(11);//apply
 
 }
 
 MainWindow::~MainWindow()
 {
-    //m_dbm->closeConnection();
     delete ui;
 }
 
 void MainWindow::onCustomMenuRequest(QPoint pos)
 {
+    //update selected row
+    m_selectedRow = ui->tableView->rowAt(pos.y());
     /* Create an object context menu */
    QMenu * menu = new QMenu(this);
    /* Create actions to the context menu */
    QAction * addRequest = new QAction("Add", this);
    QAction * sendRequest = new QAction("Send", this);
-   QAction * rollbackRequest = new QAction("Rollback", this);
+   QAction * deletRequest = new QAction("Delete", this);
    QAction * refreshRequest = new QAction("Refresh", this);
    QAction * reviewRequest = new QAction("Review", this);
+   QAction * applyRequest = new QAction("Apply", this);
    /* Connect slot handlers for Action pop-up menu */
-   connect(addRequest, SIGNAL(triggered()), this, SLOT(onAddRequest()));  // Call Handler dialog editing
+   connect(addRequest, SIGNAL(triggered()), this, SLOT(onAddRequest()));
    connect(sendRequest, SIGNAL(triggered()), this, SLOT(onSendRequest()));
-   connect(rollbackRequest, SIGNAL(triggered()), this, SLOT(onRollbackRequest()));
+   connect(deletRequest, SIGNAL(triggered()), this, SLOT(onDeleteRequest()));
    connect(refreshRequest, SIGNAL(triggered()), this, SLOT(onRefreshRequest()));
    connect(reviewRequest, SIGNAL(triggered()), this, SLOT(onReviewRequest()));
+   connect(applyRequest, SIGNAL(triggered()), this, SLOT(onApplyRequest()));
    /* Set the actions to the menu */
    menu->addAction(addRequest);
-   m_selectedRow = ui->tableView->rowAt(pos.y());
+   menu->addAction(refreshRequest);
+   // disable action menu
    if(m_selectedRow != -1)
    {
-       if(m_dbm->isReviewer() || !isSended())
-           menu->addAction(sendRequest);
-       if(isRollbackable())
-           menu->addAction(rollbackRequest);
-       if(!isSended())
-           menu->addAction(reviewRequest);
+       menu->addAction(sendRequest);
+       menu->addAction(deletRequest);
+       menu->addAction(reviewRequest);
+       menu->addAction(applyRequest);
+       if(!isSendable())
+           sendRequest->setDisabled(true);
+       if(!isDeleteable())
+           deletRequest->setDisabled(true);
+       if(!isReviewable())
+           reviewRequest->setDisabled(true);
+       if(!isApplyable())
+           applyRequest->setDisabled(true);
    }
-   menu->addAction(refreshRequest);
    /* Call the context menu */
    menu->popup(ui->tableView->viewport()->mapToGlobal(pos));
 }
@@ -160,56 +165,105 @@ void MainWindow::onAddRequest()
 
 }
 
-bool MainWindow::isRollbackable()
+bool MainWindow::isDeleteable()
 {
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
     QString status = reqRec.value(6).toString();
-    if(status == "checking" || status == "rejected")
+    if(status == "checking")
         return true;
     return false;
 }
 
-bool MainWindow::isSended()
+bool MainWindow::isReviewable()
 {
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
     int requestId = reqRec.value("id").toInt();
-    return m_dbm->isSended(requestId);
+    if(!m_dbm->isReviewer())
+        return false;
+    if(m_dbm->isSended(requestId))
+        return false;
+    if(m_dbm->hasApplied(requestId))
+        return false;
+
+    return true;
 }
-void MainWindow::onRollbackRequest()
+
+bool MainWindow::isSendable()
+{
+    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    int requestId = reqRec.value("id").toInt();
+    QString status = reqRec.value(6).toString();
+    bool isReviewer = m_dbm->isReviewer();
+    bool isApplicant = m_dbm->isApplicant(requestId);
+
+    if( isReviewer
+       &&(status == "checking" || status == "waiting"))//reviewer can not send checking and waiting request
+        return false;
+    if(!isReviewer && status != "checking")//clients can send only checking request
+        return false;
+    if(!isReviewer && m_dbm->isSended(requestId))// for reviewer checked in send dialog form
+        return false;
+    if(isApplicant && status == "rejected")
+        return false;
+    return true;
+}
+
+bool MainWindow::isApplyable()
+{
+    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    int requestId = reqRec.value("id").toInt();
+    QString status = reqRec.value(6).toString();
+    if(status == "checking" || status == "waiting")
+        return false;
+    if(m_dbm->hasApplied(requestId))
+        return false;
+    bool isApplicant = m_dbm->isApplicant(requestId);
+    if(isApplicant && status == "accepted")
+        return false;
+    if(!isApplicant && status == "rejected")
+        return false;
+    return true;
+}
+
+void MainWindow::insertRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model)
+{
+    if(model->insertRecord(-1, tableRec))
+    {
+        if(!model->submitAll())
+        {
+            qDebug() << "insertRow:model:insert -> SQL ERROR: " << model->lastError().text();
+        }
+    }
+}
+
+void MainWindow::deleteRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model)
+{
+    model->setFilter("id = " + tableRec.value("id").toString());
+    model->select();
+    if(model->removeRows(0, 1))
+    {
+        if(!model->submitAll())
+        {
+            qDebug() << "deleteRow:model:delete -> SQL ERROR: " << model->lastError().text();
+        }
+    }
+}
+void MainWindow::onDeleteRequest()
 {
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
     QString tableName = reqRec.value(2).toString();
     QString type = reqRec.value(5).toString();
     QByteArray data = reqRec.value("data").toByteArray();
     QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
-//    qDebug()<< reqRec;
-//    qDebug()<< tableRec;
+
     QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(tableName);
-    if(!isRollbackable())
-        return;
     if(type == "insert")
     {
-        model->setFilter("id = " + tableRec.value("id").toString());
-        model->select();
-        if(model->removeRows(0, 1))
-        {
-            if(!model->submitAll())
-            {
-                qDebug() << "onRollbackRequest:model:insert -> SQL ERROR: " << model->lastError().text();
-                return;
-            }
-        }
+        deleteRow(tableRec, model);
     }
     else if(type == "delete")
     {
-        if(model->insertRecord(-1, tableRec))
-        {
-            if(!model->submitAll())
-            {
-                qDebug() << "onRollbackRequest:model:delete -> SQL ERROR: " << model->lastError().text();
-                return;
-            }
-        }
+        insertRow(tableRec, model);
     }
     if(m_requestModel->removeRows(m_selectedRow, 1))
     {
@@ -318,6 +372,39 @@ void MainWindow::onReviewRequest()
             qDebug() << "onReviewRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
             m_requestModel->revertAll();
         }
+    }
+}
+
+void MainWindow::onApplyRequest()
+{
+    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    QString tableName = reqRec.value(2).toString();
+    QString type = reqRec.value(5).toString();
+    QString status = reqRec.value(6).toString();
+    QByteArray data = reqRec.value("data").toByteArray();
+    QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
+
+    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(tableName);
+    if(status == "accepted")
+    {
+        if(type == "insert")
+            insertRow(tableRec, model);
+        else if(type == "delete")
+            deleteRow(tableRec, model);
+    }
+    else if(status == "rejected")
+    {
+        if(type == "insert")
+            deleteRow(tableRec, model);
+        else if(type == "delete")
+            insertRow(tableRec, model);
+    }
+    reqRec.setValue("apply", true);
+    m_requestModel->setRecord(m_selectedRow, reqRec);
+    if(!m_requestModel->submitAll())
+    {
+        qDebug() << "onApplyRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
+        m_requestModel->revertAll();
     }
 }
 

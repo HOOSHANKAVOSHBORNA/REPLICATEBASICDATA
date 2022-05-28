@@ -100,47 +100,6 @@ QSqlRelationalTableModel *DBManager::getRequestRelationalModel()
     model->setTable("request");
     model->setEditStrategy(QSqlTableModel::OnManualSubmit);
 
-//    QSqlQuery query(db);
-//    QString sql = "SELECT " \
-//            "tc.table_schema, "\
-//            "tc.constraint_name, "\
-//            "tc.table_name, "\
-//            "kcu.column_name, "\
-//            "col.ordinal_position, "\
-//            "ccu.table_schema AS foreign_table_schema," \
-//            "ccu.table_name AS foreign_table_name," \
-//            "ccu.column_name AS foreign_column_name " \
-//        "FROM " \
-//            "information_schema.table_constraints AS tc "\
-//            "JOIN information_schema.key_column_usage AS kcu "\
-//              "ON tc.constraint_name = kcu.constraint_name"\
-//             " AND tc.table_schema = kcu.table_schema "\
-//            "JOIN information_schema.columns as col "\
-//                "ON col.column_name = kcu.column_name "\
-//                 "AND tc.table_schema = col.table_schema "\
-//            "JOIN information_schema.constraint_column_usage AS ccu "\
-//              "ON ccu.constraint_name = tc.constraint_name "\
-//              "AND ccu.table_schema = tc.table_schema "\
-//        "WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name='request';";
-//    if (query.exec(sql) != false) {
-//        while (query.next())
-//        {
-//            Request req;
-//            QSqlRecord rec = query.record();
-//            QString column_name = query.value(rec.indexOf("column_name")).toString();
-//            QString foreign_table_name = query.value(rec.indexOf("foreign_table_name")).toString();
-//            QString foreign_column_name = query.value(rec.indexOf("foreign_column_name")).toString();
-//            int column_index = query.value(rec.indexOf("ordinal_position")).toInt();
-
-//            model->setRelation(column_index - 1, QSqlRelation(foreign_table_name, foreign_column_name, "name"));
-//            model->setHeaderData(column_index- 1, Qt::Horizontal, column_name);
-//        }
-//    }
-//    else
-//        qDebug() << "SQL ERROR: " << query.lastError().text();
-
-//    QSqlRelation rl("table_name", "id", "name");
-//    rl.displayColumn();
     model->setRelation(2, QSqlRelation("table_name", "id", "name"));
     model->setHeaderData(2, Qt::Horizontal, "table_name");
 
@@ -182,6 +141,10 @@ QSqlRelationalTableModel *DBManager::getRelationalModelTableName(QString _name)
     model->setTable(_name);
     model->setEditStrategy(QSqlTableModel::OnManualSubmit);
     model->select();
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getRelationalModelTableName -> SQL ERROR: " << model->lastError().text();
+    }
     return model;
 }
 
@@ -246,7 +209,13 @@ int DBManager::getSelfId() const
 
 int DBManager::getReviewerId() const
 {
-    return 1;
+    QSqlQueryModel* model = new QSqlQueryModel();
+    model->setQuery(QObject::tr("SELECT * FROM client_info WHERE is_reviewer = true"), db);
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getReviewerId -> SQL ERROR: " << model->lastError().text();
+    }
+    return model->record(0).value("id").toInt();
 }
 
 bool DBManager::isReviewer() const
@@ -263,6 +232,10 @@ bool DBManager::isSended(int reqId, int receiver) const
     model->setEditStrategy(QSqlTableModel::OnManualSubmit);
     model->setFilter(QObject::tr("request_id = %1 AND receiver = %2").arg(reqId).arg(receiver));
     model->select();
+    if(model->lastError().isValid())
+    {
+        qDebug() << "isSended -> SQL ERROR: " << model->lastError().text();
+    }
     if(model->rowCount() == 0)
         return false;
     return true;
@@ -275,9 +248,42 @@ bool DBManager::isSended(int reqId) const
     model->setEditStrategy(QSqlTableModel::OnManualSubmit);
     model->setFilter(QObject::tr("request_id = %1").arg(reqId));
     model->select();
+    if(model->lastError().isValid())
+    {
+        qDebug() << "isSended -> SQL ERROR: " << model->lastError().text();
+    }
     if(model->rowCount() == 0)
         return false;
     return true;
+}
+
+bool DBManager::isApplicant(int reqId) const
+{
+    QSqlTableModel* model = new QSqlTableModel();
+    model->setTable("request");
+    model->setFilter(QObject::tr("id = %1").arg(reqId));
+    model->select();
+    if(model->lastError().isValid())
+    {
+        qDebug() << "isSended -> SQL ERROR: " << model->lastError().text();
+    }
+    int applicant = model->record(0).value("applicant").toInt();
+    if(applicant == getSelfId())
+        return true;
+    return false;
+}
+
+bool DBManager::hasApplied(int reqId) const
+{
+    QSqlTableModel* model = new QSqlTableModel();
+    model->setTable("request");
+    model->setFilter(QObject::tr("id = %1").arg(reqId));
+    model->select();
+    if(model->lastError().isValid())
+    {
+        qDebug() << "isSended -> SQL ERROR: " << model->lastError().text();
+    }
+    return model->record(0).value("apply").toBool();
 }
 
 
@@ -285,5 +291,6 @@ DBManager *DBManager::getDBManager()
 {
     if (!instance)
           instance = new DBManager();
+    instance->openConnection();
     return instance;
 }
