@@ -149,7 +149,7 @@ void RequestManager::onReceiveData(SerialPortManager::PortInfo info, QByteArray 
         if(model->rowCount() > 0)
         {
             QSqlRecord existRec = model->record(0);
-            int status = rec.value(6).toInt();
+            int status = rec.value(5).toInt();
             existRec.setValue(6, status);
             model->setRecord(0, existRec);
             if(!model->submitAll())
