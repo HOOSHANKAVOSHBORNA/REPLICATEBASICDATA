@@ -97,6 +97,7 @@ void MainWindow::onAddRequest()
             qDebug() << "onAddRequest:model:submit -> SQL ERROR: " << model->lastError().text();
             return;
         }
+        QList<CreateRequestDialog::UpdateStruct> updateIndexList = createRequest->getUpdateIndexList();
         //------
         //--insert "insert request" ----------------------------------------
         int tableIndex = m_dbm->getTableIndex(model->tableName());
@@ -143,6 +144,34 @@ void MainWindow::onAddRequest()
             requestRec.setValue(2, applicant);
             requestRec.setValue(3, reviewer);
             requestRec.setValue(4, type);//delete
+            requestRec.setValue(5, status);//checking
+            requestRec.setValue(6, data);
+            requestRec.setValue(7, time);
+            requestRec.setValue(8, description);
+            //qDebug() <<"requestRec:"<<requestRec;
+            if(!m_requestModel->insertRecord(-1, requestRec))
+            {
+                m_requestModel->revertAll();
+                return;
+            }
+        }
+        //-------------------------------------------------------------------
+        //--insert update request--------------------------------------------
+        type = m_dbm->getRequestTypeIndex("update");
+        for(auto updateStruct:updateIndexList)
+        {
+            //QSqlRecord rec = model->record(delStruct.index);
+            QByteArray oldData = PacketManager::toByteArray(updateStruct.oldRec);
+            QByteArray newData = PacketManager::toByteArray(updateStruct.newRec);
+            QByteArray data = PacketManager::toByteArray(oldData, newData);
+
+            QSqlRecord requestRec = m_requestModel->record();
+            requestRec.remove(requestRec.indexOf("id"));
+            requestRec.setValue(0, updateStruct.newRec.field("id").value());
+            requestRec.setValue(1, tableIndex);
+            requestRec.setValue(2, applicant);
+            requestRec.setValue(3, reviewer);
+            requestRec.setValue(4, type);//update
             requestRec.setValue(5, status);//checking
             requestRec.setValue(6, data);
             requestRec.setValue(7, time);
@@ -248,22 +277,43 @@ void MainWindow::deleteRow(const QSqlRecord &tableRec, QSqlRelationalTableModel 
         }
     }
 }
+
+void MainWindow::updateRow(const QSqlRecord &oldRec, const QSqlRecord &newRec, QSqlRelationalTableModel *model)
+{
+    model->setFilter("id = " + newRec.value("id").toString());
+    model->select();
+    if(model->setRecord(0, oldRec))
+    {
+        if(!model->submitAll())
+        {
+            qDebug() << "updateRow:model:update -> SQL ERROR: " << model->lastError().text();
+        }
+    }
+}
 void MainWindow::onDeleteRequest()
 {
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
     QString tableName = reqRec.value(2).toString();
     QString type = reqRec.value(5).toString();
     QByteArray data = reqRec.value("data").toByteArray();
-    QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
 
     QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(tableName);
     if(type == "insert")
     {
+        QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
         deleteRow(tableRec, model);
     }
     else if(type == "delete")
     {
+        QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
         insertRow(tableRec, model);
+    }
+    else if(type == "update")
+    {
+        QList<QByteArray> datas = PacketManager::fromByteArray(data);
+        QSqlRecord oldRec = PacketManager::fromByteArray(datas.at(0), m_dbm, tableName);
+        QSqlRecord newRec = PacketManager::fromByteArray(datas.at(1), m_dbm, tableName);
+        updateRow(oldRec, newRec, model);
     }
     if(m_requestModel->removeRows(m_selectedRow, 1))
     {
@@ -382,22 +432,48 @@ void MainWindow::onApplyRequest()
     QString type = reqRec.value(5).toString();
     QString status = reqRec.value(6).toString();
     QByteArray data = reqRec.value("data").toByteArray();
-    QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
+
 
     QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(tableName);
     if(status == "accepted")
     {
         if(type == "insert")
+        {
+            QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
             insertRow(tableRec, model);
+        }
         else if(type == "delete")
+        {
+            QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
             deleteRow(tableRec, model);
+        }
+        else if(type == "update")
+        {
+            QList<QByteArray> datas = PacketManager::fromByteArray(data);
+            QSqlRecord oldRec = PacketManager::fromByteArray(datas.at(0), m_dbm, tableName);
+            QSqlRecord newRec = PacketManager::fromByteArray(datas.at(1), m_dbm, tableName);
+            updateRow(newRec, oldRec, model);
+        }
     }
     else if(status == "rejected")
     {
         if(type == "insert")
+        {
+            QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
             deleteRow(tableRec, model);
+        }
         else if(type == "delete")
+        {
+            QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
             insertRow(tableRec, model);
+        }
+        else if(type == "update")
+        {
+            QList<QByteArray> datas = PacketManager::fromByteArray(data);
+            QSqlRecord oldRec = PacketManager::fromByteArray(datas.at(0), m_dbm, tableName);
+            QSqlRecord newRec = PacketManager::fromByteArray(datas.at(1), m_dbm, tableName);
+            updateRow(oldRec, newRec, model);
+        }
     }
     reqRec.setValue("apply", true);
     m_requestModel->setRecord(m_selectedRow, reqRec);

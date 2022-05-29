@@ -35,3 +35,27 @@ QSqlRecord PacketManager::fromByteArray(const QByteArray& _data,DBManager* dbm, 
     }
     return rec;
 }
+
+QByteArray PacketManager::toByteArray(const QByteArray &oldData, const QByteArray &newData)
+{
+    QByteArray result;
+    QDataStream stream(&result,QIODevice::ReadWrite);
+    stream.setVersion(QDataStream::Qt_5_13);
+    stream << oldData;
+    stream << newData;
+    return result;
+}
+
+QList<QByteArray> PacketManager::fromByteArray(const QByteArray &_data)
+{
+    QList<QByteArray> result;
+    QByteArray oldData;
+    QByteArray newData;
+    QDataStream stream(_data);
+    stream.setVersion(QDataStream::Qt_5_13);
+    stream >> oldData;
+    stream >> newData;
+    result.append(oldData);
+    result.append(newData);
+    return result;
+}

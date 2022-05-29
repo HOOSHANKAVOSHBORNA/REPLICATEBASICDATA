@@ -1,7 +1,7 @@
 #ifndef REQUESTMANAGER_H
 #define REQUESTMANAGER_H
 
-#include "dbmanager.h"
+#include "../common/dbmanager.h"
 #include "serialportmanager.h"
 
 #include <QObject>
@@ -20,8 +20,6 @@ private:
     void initSerialPorts();
     void sendRequest(int request_id, int receiver);
     void sendAcknowledgment(int receiver, qint64 reqId);
-    QByteArray toByteArray(QSqlRecord);
-    QSqlRecord fromByteArray(QByteArray, QString);
 private slots:
     void checkAcknowledgment();
     void onReceiveData(SerialPortManager::PortInfo, QByteArray &);

@@ -4,7 +4,7 @@
 
 -- Dumped from database version 9.4.4
 -- Dumped by pg_dump version 9.4.4
--- Started on 2022-05-18 17:36:28 +0430
+-- Started on 2022-05-29 14:47:21 +0430
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -169,7 +169,8 @@ ALTER SEQUENCE address_id_seq OWNED BY address.id;
 CREATE TABLE client_info (
     id bigint NOT NULL,
     name character varying(128),
-    port_index integer
+    port_index integer,
+    is_reviewer boolean
 );
 
 
@@ -268,8 +269,10 @@ CREATE TABLE request (
     type integer NOT NULL,
     status integer NOT NULL,
     data bytea,
-    description json,
-    created_at bigint
+    created_at bigint,
+    applicant_description text,
+    reviewer_description text,
+    apply boolean
 );
 
 
@@ -448,10 +451,8 @@ ALTER TABLE ONLY table_name ALTER COLUMN id SET DEFAULT nextval('table_name_id_s
 -- Data for Name: ack_status; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY ack_status (id, name) FROM stdin;
-1	pending
-2	sended
-\.
+INSERT INTO ack_status (id, name) VALUES (1, 'pending');
+INSERT INTO ack_status (id, name) VALUES (2, 'sended');
 
 
 --
@@ -469,7 +470,7 @@ SELECT pg_catalog.setval('ack_status_id_seq', 1, false);
 -- Name: acknowledgement_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('acknowledgement_id_seq', 10, true);
+SELECT pg_catalog.setval('acknowledgement_id_seq', 84, true);
 
 
 --
@@ -478,8 +479,6 @@ SELECT pg_catalog.setval('acknowledgement_id_seq', 10, true);
 -- Data for Name: acknowledgment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY acknowledgment (id, request_id, receiver, status) FROM stdin;
-\.
 
 
 --
@@ -488,8 +487,6 @@ COPY acknowledgment (id, request_id, receiver, status) FROM stdin;
 -- Data for Name: address; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY address (id, person_id, address, created_at) FROM stdin;
-\.
 
 
 --
@@ -507,11 +504,9 @@ SELECT pg_catalog.setval('address_id_seq', 1, false);
 -- Data for Name: client_info; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY client_info (id, name, port_index) FROM stdin;
-1	center	-1
-2	jafari	0
-3	roodsarabi	1
-\.
+INSERT INTO client_info (id, name, port_index, is_reviewer) VALUES (3, 'roodsarabi', 0, false);
+INSERT INTO client_info (id, name, port_index, is_reviewer) VALUES (1, 'client110', -1, true);
+INSERT INTO client_info (id, name, port_index, is_reviewer) VALUES (2, 'jafari', 1, false);
 
 
 --
@@ -529,8 +524,6 @@ SELECT pg_catalog.setval('client_info_id_seq', 1, false);
 -- Data for Name: person; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY person (id, num, name, family, created_at) FROM stdin;
-\.
 
 
 --
@@ -548,8 +541,6 @@ SELECT pg_catalog.setval('person_id_seq', 1, false);
 -- Data for Name: request; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY request (id, table_id, table_name, applicant, reviewer, type, status, data, description, created_at) FROM stdin;
-\.
 
 
 --
@@ -558,7 +549,7 @@ COPY request (id, table_id, table_name, applicant, reviewer, type, status, data,
 -- Name: request_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('request_id_seq', 101, true);
+SELECT pg_catalog.setval('request_id_seq', 164, true);
 
 
 --
@@ -567,13 +558,11 @@ SELECT pg_catalog.setval('request_id_seq', 101, true);
 -- Data for Name: request_status; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY request_status (id, name) FROM stdin;
-1	checking
-2	waiting
-4	accepted
-8	edited
-16	rejected
-\.
+INSERT INTO request_status (id, name) VALUES (1, 'checking');
+INSERT INTO request_status (id, name) VALUES (2, 'waiting');
+INSERT INTO request_status (id, name) VALUES (4, 'accepted');
+INSERT INTO request_status (id, name) VALUES (8, 'edited');
+INSERT INTO request_status (id, name) VALUES (16, 'rejected');
 
 
 --
@@ -591,11 +580,9 @@ SELECT pg_catalog.setval('request_status_id_seq', 1, false);
 -- Data for Name: request_type; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY request_type (id, name) FROM stdin;
-1	insert
-2	update
-4	delete
-\.
+INSERT INTO request_type (id, name) VALUES (1, 'insert');
+INSERT INTO request_type (id, name) VALUES (2, 'update');
+INSERT INTO request_type (id, name) VALUES (4, 'delete');
 
 
 --
@@ -604,10 +591,8 @@ COPY request_type (id, name) FROM stdin;
 -- Data for Name: table_name; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY table_name (id, name) FROM stdin;
-1	person
-2	address
-\.
+INSERT INTO table_name (id, name) VALUES (1, 'person');
+INSERT INTO table_name (id, name) VALUES (2, 'address');
 
 
 --
@@ -766,7 +751,7 @@ GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
 
--- Completed on 2022-05-18 17:36:29 +0430
+-- Completed on 2022-05-29 14:47:21 +0430
 
 --
 -- PostgreSQL database dump complete

@@ -18,7 +18,7 @@ CreateRequestDialog::CreateRequestDialog(QWidget *parent) :
     connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onCustomMenuRequest(QPoint)));
 
     //dbm = DBManager::getDBManager();
-    m_dbm->openConnection();
+    //m_dbm->openConnection();
 
     QSqlQueryModel* model = m_dbm->getTableNameModel();
     ui->comboBox->setModel(model);
@@ -39,6 +39,11 @@ QList<int> CreateRequestDialog::getInsertIndexList() const
 QList<CreateRequestDialog::DeleteStruct> CreateRequestDialog::getDeleteIndexList() const
 {
     return m_deleteIndexList;
+}
+
+QList<CreateRequestDialog::UpdateStruct> CreateRequestDialog::getUpdateIndexList() const
+{
+    return m_updateIndexList;
 }
 
 QString CreateRequestDialog::getDescription() const
@@ -76,6 +81,7 @@ void CreateRequestDialog::onComboCurrentIndexChanged(QString _tableName)
 {
     m_model = m_dbm->getRelationalModelTableName(_tableName);
     ui->tableView->setModel(m_model);
+    connect(m_model, SIGNAL(beforeUpdate(int, QSqlRecord &)), this, SLOT(onBeforeUpdate(int, QSqlRecord &)));
 
     QSqlRecord record = m_model->record();
     ui->tableView->hideColumn(record.indexOf("id"));
@@ -121,4 +127,10 @@ void CreateRequestDialog::onDeleteRow()
             m_deleteIndexList.append({m_selectedRow,m_model->record(m_selectedRow)});
         }
     }
+}
+
+void CreateRequestDialog::onBeforeUpdate(int row, QSqlRecord &record)
+{
+    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(ui->comboBox->currentText());
+    m_updateIndexList.append({row, model->record(row), record});
 }

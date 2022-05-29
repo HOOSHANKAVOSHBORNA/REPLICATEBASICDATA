@@ -12,27 +12,60 @@ ReviewDialog::ReviewDialog(QSqlRecord rec, QWidget *parent) :
     setWindowTitle("Review Request");
 
     m_dbm  = DBManager::getDBManager();
-    m_dbm->openConnection();
+    //m_dbm->openConnection();
 
     QString tableName = rec.value(2).toString();
     QString applicant = rec.value(3).toString();
     QString type = rec.value(5).toString();
     QByteArray data = rec.value("data").toByteArray();
-    m_tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
 
-    ui->tableWidgetReq->setRowCount(1);
-    ui->tableWidgetReq->setColumnCount(m_tableRec.count());
-    for(int i = 0; i <  m_tableRec.count(); ++i)
+    if(type == "update")
     {
-        QString name = m_tableRec.fieldName(i);
-        QString value = m_tableRec.value(i).toString();
-        QCheckBox* checkbox = new QCheckBox();
-        checkbox->setText(value);
-        ui->tableWidgetReq->setCellWidget(0, i, checkbox);
-        ui->tableWidgetReq->setHorizontalHeaderItem(i,new QTableWidgetItem(name));
-        ui->comboField->addItem(name);
+        QList<QByteArray> datas = PacketManager::fromByteArray(data);
+        QSqlRecord oldRec = PacketManager::fromByteArray(datas.at(0), m_dbm, tableName);
+        QSqlRecord newRec = PacketManager::fromByteArray(datas.at(1), m_dbm, tableName);
 
-        connect(checkbox, SIGNAL(stateChanged(int)), this, SLOT(onStateChanged(int)));
+        m_tableRec = newRec;
+        ui->tableWidgetReq->setRowCount(2);
+        ui->tableWidgetReq->setColumnCount(m_tableRec.count());
+        for(int i = 0; i <  m_tableRec.count(); ++i)
+        {
+            QString name = m_tableRec.fieldName(i);
+            QString value = m_tableRec.value(i).toString();
+            QCheckBox* checkbox = new QCheckBox();
+            checkbox->setText(value);
+            ui->tableWidgetReq->setCellWidget(0, i, checkbox);
+            ui->tableWidgetReq->setHorizontalHeaderItem(i,new QTableWidgetItem(name));
+            ui->comboField->addItem(name);
+
+            connect(checkbox, SIGNAL(stateChanged(int)), this, SLOT(onStateChanged(int)));
+        }
+        for(int i = 0; i <  oldRec.count(); ++i)
+        {
+            QString value = oldRec.value(i).toString();
+            ui->tableWidgetReq->setItem(1, i, new QTableWidgetItem(value));
+        }
+
+        ui->tableWidgetReq->setVerticalHeaderItem(0,new QTableWidgetItem("new"));
+        ui->tableWidgetReq->setVerticalHeaderItem(1,new QTableWidgetItem("old"));
+    }
+    else
+    {
+        m_tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
+        ui->tableWidgetReq->setRowCount(1);
+        ui->tableWidgetReq->setColumnCount(m_tableRec.count());
+        for(int i = 0; i <  m_tableRec.count(); ++i)
+        {
+            QString name = m_tableRec.fieldName(i);
+            QString value = m_tableRec.value(i).toString();
+            QCheckBox* checkbox = new QCheckBox();
+            checkbox->setText(value);
+            ui->tableWidgetReq->setCellWidget(0, i, checkbox);
+            ui->tableWidgetReq->setHorizontalHeaderItem(i,new QTableWidgetItem(name));
+            ui->comboField->addItem(name);
+
+            connect(checkbox, SIGNAL(stateChanged(int)), this, SLOT(onStateChanged(int)));
+        }
     }
     ui->tableWidgetReq->hideColumn(0);
     ui->comboField->removeItem(0);
@@ -84,6 +117,7 @@ void ReviewDialog::filter()
 
 void ReviewDialog::onCellClicked(int row, int col)
 {
+    if(row == 1) return;
     QCheckBox *checkBox = static_cast<QCheckBox*>(ui->tableWidgetReq->cellWidget(row, col));
     checkBox->setChecked(!checkBox->isChecked());
 }

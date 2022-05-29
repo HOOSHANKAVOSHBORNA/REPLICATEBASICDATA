@@ -26,6 +26,7 @@ private:
 
     void insertRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model);
     void deleteRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model);
+    void updateRow(const QSqlRecord &oldRec, const QSqlRecord &newRec, QSqlRelationalTableModel *model);
 private slots:
     void onCustomMenuRequest(QPoint pos);
     void onAddRequest();

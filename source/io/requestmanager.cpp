@@ -4,6 +4,7 @@
 #include <QSerialPortInfo>
 #include <QSqlField>
 #include <QSqlRelationalTableModel>
+#include "../common/packetmanager.h"
 
 
 RequestManager::RequestManager(QObject *parent):
@@ -11,7 +12,7 @@ RequestManager::RequestManager(QObject *parent):
     m_standardOutput(stdout)
 {
     m_dbm  = DBManager::getDBManager();
-    m_dbm->openConnection();
+    //m_dbm->openConnection();
 
     //init and open port
     initSerialPorts();
@@ -88,7 +89,7 @@ void RequestManager::sendRequest(int request_id, int receiver)
         return;
     }
     QSqlRecord rec = model->record(0);
-    QByteArray data = toByteArray(rec);
+    QByteArray data = PacketManager::toByteArray(rec);
     // add header----------------
     QByteArray result;
     QDataStream stream(&result,QIODevice::ReadWrite);
@@ -126,34 +127,6 @@ void RequestManager::sendAcknowledgment(int receiver, qint64 reqId)
     m_serialPortMap[receiver]->sendData(result);
 }
 
-QByteArray RequestManager::toByteArray(QSqlRecord _rec)
-{
-    QByteArray result;
-    QDataStream stream(&result,QIODevice::ReadWrite);
-    stream.setVersion(QDataStream::Qt_5_13);
-    for (int i = 0; i < _rec.count(); i++)
-    {
-        QSqlField field = _rec.field(i);
-        stream << field.value();
-    }
-    return result;
-}
-
-QSqlRecord RequestManager::fromByteArray(QByteArray _data, QString _tableName)
-{
-    QDataStream stream(_data);
-    stream.setVersion(QDataStream::Qt_5_13);
-    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(_tableName);
-    QSqlRecord rec = model->record();
-    for (int i = 0; i < rec.count(); i++)
-    {
-        QVariant field;
-        stream >> field;
-        rec.setValue(i,field);
-    }
-    return rec;
-}
-
 void RequestManager::onReceiveData(SerialPortManager::PortInfo info, QByteArray &data)
 {
     QDataStream dataStream(data);
@@ -164,7 +137,7 @@ void RequestManager::onReceiveData(SerialPortManager::PortInfo info, QByteArray 
     data.remove(0,5);
     if(type == DataType::Request)
     {
-        QSqlRecord rec = fromByteArray(data, "request");
+        QSqlRecord rec = PacketManager::fromByteArray(data, m_dbm, "request");
         QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName("request");
         qint64 reqId = rec.value("id").toLongLong();
         rec.remove(rec.indexOf("id"));
