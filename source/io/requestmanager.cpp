@@ -150,7 +150,9 @@ void RequestManager::onReceiveData(SerialPortManager::PortInfo info, QByteArray 
         {
             QSqlRecord existRec = model->record(0);
             int status = rec.value(5).toInt();
+            QString reviewerDesc = rec.value("reviewer_description").toString();
             existRec.setValue(6, status);
+            existRec.setValue("reviewer_description", reviewerDesc);
             model->setRecord(0, existRec);
             if(!model->submitAll())
             {
