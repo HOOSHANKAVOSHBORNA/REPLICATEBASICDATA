@@ -3,13 +3,18 @@
 #include "ui_reviewdialog.h"
 #include "../common/packetmanager.h"
 #include <QCheckBox>
+#include <QMenu>
 
 ReviewDialog::ReviewDialog(QSqlRecord rec, QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::ReviewDialog)
+    ui(new Ui::ReviewDialog),
+    m_hasEditRow(false)
 {
     ui->setupUi(this);
     setWindowTitle("Review Request");
+
+    ui->tableWidgetReq->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->tableWidgetReq, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onCustomMenuRequest(QPoint)));
 
     m_dbm  = DBManager::getDBManager();
     //m_dbm->openConnection();
@@ -17,6 +22,7 @@ ReviewDialog::ReviewDialog(QSqlRecord rec, QWidget *parent) :
     QString tableName = rec.value(2).toString();
     QString applicant = rec.value(3).toString();
     QString type = rec.value(5).toString();
+    m_reqType = type;
     QByteArray data = rec.value("data").toByteArray();
 
     if(type == "update")
@@ -66,6 +72,7 @@ ReviewDialog::ReviewDialog(QSqlRecord rec, QWidget *parent) :
 
             connect(checkbox, SIGNAL(stateChanged(int)), this, SLOT(onStateChanged(int)));
         }
+        ui->tableWidgetReq->setVerticalHeaderItem(0,new QTableWidgetItem("new"));
     }
     ui->tableWidgetReq->hideColumn(0);
     ui->comboField->removeItem(0);
@@ -93,6 +100,26 @@ QString ReviewDialog::getDescription() const
     return ui->txtDescription->text();
 }
 
+QSqlRecord ReviewDialog::getEditRecord() const
+{
+    QSqlRecord rec = m_model->record();
+    if(m_hasEditRow)
+    {
+        int row = ui->tableWidgetReq->rowCount()-1;
+        for(int i = 0; i <  ui->tableWidgetReq->columnCount(); ++i)
+        {
+            QString itemText = ui->tableWidgetReq->item(row, i)->text();
+            rec.setValue(i,itemText);
+        }
+    }
+    return rec;
+}
+
+bool ReviewDialog::hasEditRecord() const
+{
+    return m_hasEditRow;
+}
+
 void ReviewDialog::filter()
 {
     QString strFilter = "";
@@ -117,7 +144,7 @@ void ReviewDialog::filter()
 
 void ReviewDialog::onCellClicked(int row, int col)
 {
-    if(row == 1) return;
+    if(row != 0) return;
     QCheckBox *checkBox = static_cast<QCheckBox*>(ui->tableWidgetReq->cellWidget(row, col));
     checkBox->setChecked(!checkBox->isChecked());
 }
@@ -160,4 +187,54 @@ void ReviewDialog::on_btnReject_clicked()
 void ReviewDialog::on_btnClose_clicked()
 {
     close();
+}
+
+void ReviewDialog::onCustomMenuRequest(QPoint pos)
+{
+    //can not edit delete request
+    if(m_reqType != "delete")
+    {
+        /* Create an object context menu */
+       QMenu * menu = new QMenu(this);
+       /* Create actions to the context menu */
+       QAction * insertRow = new QAction("Edit Request", this);
+       QAction * deleteRow = new QAction("Delete Edit Request", this);
+       /* Connect slot handlers for Action pop-up menu */
+       connect(insertRow, SIGNAL(triggered()), this, SLOT(onInsertEditRow()));  // Call Handler dialog editing
+       connect(deleteRow, SIGNAL(triggered()), this, SLOT(onDeleteEditRow()));
+       /* Set the actions to the menu */
+       menu->addAction(insertRow);
+       //int row = ui->tableWidgetReq->rowAt(pos.y());
+       menu->addAction(deleteRow);
+       /* Call the context menu */
+       menu->popup(ui->tableWidgetReq->viewport()->mapToGlobal(pos));
+    }
+}
+
+void ReviewDialog::onInsertEditRow()
+{
+    if(!m_hasEditRow)
+    {
+        int row = ui->tableWidgetReq->rowCount();
+        ui->tableWidgetReq->insertRow(row);
+        for(int i = 0; i <  m_tableRec.count(); ++i)
+        {
+            QString value = m_tableRec.value(i).toString();
+            ui->tableWidgetReq->setItem(row, i, new QTableWidgetItem(value));
+        }
+
+        ui->tableWidgetReq->setVerticalHeaderItem(row,new QTableWidgetItem("edit"));
+
+        m_hasEditRow = true;
+    }
+}
+
+void ReviewDialog::onDeleteEditRow()
+{
+    if(m_hasEditRow)
+    {
+        int row = ui->tableWidgetReq->rowCount();
+        ui->tableWidgetReq->removeRow(row - 1);
+        m_hasEditRow = false;
+    }
 }

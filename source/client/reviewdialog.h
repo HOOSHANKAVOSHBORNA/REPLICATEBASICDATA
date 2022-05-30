@@ -18,6 +18,8 @@ public:
     explicit ReviewDialog(QSqlRecord rec, QWidget *parent = nullptr);
     ~ReviewDialog();
     QString getDescription() const;
+    QSqlRecord getEditRecord() const;
+    bool hasEditRecord() const;
 private:
     void filter();
 private slots:
@@ -28,12 +30,17 @@ private slots:
     void on_btnAccept_clicked();
     void on_btnReject_clicked();
     void on_btnClose_clicked();
+    void onCustomMenuRequest(QPoint pos);
+    void onInsertEditRow();
+    void onDeleteEditRow();
 
 private:
     Ui::ReviewDialog *ui;
     DBManager *m_dbm;
     QSqlRecord m_tableRec;
     QSqlRelationalTableModel* m_model;
+    bool m_hasEditRow;
+    QString m_reqType;
 };
 
 #endif // REVIEWDIALOG_H

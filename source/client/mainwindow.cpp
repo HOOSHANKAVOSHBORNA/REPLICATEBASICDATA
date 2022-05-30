@@ -100,91 +100,28 @@ void MainWindow::onAddRequest()
         QList<CreateRequestDialog::UpdateStruct> updateIndexList = createRequest->getUpdateIndexList();
         //------
         //--insert "insert request" ----------------------------------------
-        int tableIndex = m_dbm->getTableIndex(model->tableName());
-        int type = m_dbm->getRequestTypeIndex("insert");
-        int status = m_dbm->getRequestStatusIndex("checking");
-        int applicant = m_dbm->getSelfId();
-        int reviewer = m_dbm->getReviewerId();
-        qint64 time = QDateTime::currentMSecsSinceEpoch();
+
         for(auto insertIndex:insertIndexList)
         {
             //valid index (delete index remove from model in submitAll)
             int index = insertIndex - deleteIndexList.length();
             QSqlRecord rec = model->record(index);
-            QByteArray data = PacketManager::toByteArray(rec);
-            QSqlRecord requestRec = m_requestModel->record();
-            requestRec.remove(requestRec.indexOf("id"));
-            requestRec.setValue(0, rec.field("id").value());
-            requestRec.setValue(1, tableIndex);
-            requestRec.setValue(2, applicant);
-            requestRec.setValue(3, reviewer);
-            requestRec.setValue(4, type);//insert
-            requestRec.setValue(5, status);//checking
-            requestRec.setValue(6, data);
-            requestRec.setValue(7, time);
-            requestRec.setValue(8, description);
-            //qDebug() <<"requestRec:"<<requestRec;
-            if(!m_requestModel->insertRecord(-1, requestRec))
-            {
-                m_requestModel->revertAll();
-                return;
-            }
+            addRequest("insert", description, rec, rec);
         }
         //-------------------------------------------------------------------
         //--insert delete request--------------------------------------------
-        type = m_dbm->getRequestTypeIndex("delete");
         for(auto delStruct:deleteIndexList)
         {
-            //QSqlRecord rec = model->record(delStruct.index);
-            QByteArray data = PacketManager::toByteArray(delStruct.rec);
-            QSqlRecord requestRec = m_requestModel->record();
-            requestRec.remove(requestRec.indexOf("id"));
-            requestRec.setValue(0, delStruct.rec.field("id").value());
-            requestRec.setValue(1, tableIndex);
-            requestRec.setValue(2, applicant);
-            requestRec.setValue(3, reviewer);
-            requestRec.setValue(4, type);//delete
-            requestRec.setValue(5, status);//checking
-            requestRec.setValue(6, data);
-            requestRec.setValue(7, time);
-            requestRec.setValue(8, description);
-            //qDebug() <<"requestRec:"<<requestRec;
-            if(!m_requestModel->insertRecord(-1, requestRec))
-            {
-                m_requestModel->revertAll();
-                return;
-            }
+            addRequest("delete", description, delStruct.rec, delStruct.rec);
         }
         //-------------------------------------------------------------------
         //--insert update request--------------------------------------------
-        type = m_dbm->getRequestTypeIndex("update");
         for(auto updateStruct:updateIndexList)
         {
-            //QSqlRecord rec = model->record(delStruct.index);
-            QByteArray oldData = PacketManager::toByteArray(updateStruct.oldRec);
-            QByteArray newData = PacketManager::toByteArray(updateStruct.newRec);
-            QByteArray data = PacketManager::toByteArray(oldData, newData);
-
-            QSqlRecord requestRec = m_requestModel->record();
-            requestRec.remove(requestRec.indexOf("id"));
-            requestRec.setValue(0, updateStruct.newRec.field("id").value());
-            requestRec.setValue(1, tableIndex);
-            requestRec.setValue(2, applicant);
-            requestRec.setValue(3, reviewer);
-            requestRec.setValue(4, type);//update
-            requestRec.setValue(5, status);//checking
-            requestRec.setValue(6, data);
-            requestRec.setValue(7, time);
-            requestRec.setValue(8, description);
-            //qDebug() <<"requestRec:"<<requestRec;
-            if(!m_requestModel->insertRecord(-1, requestRec))
-            {
-                m_requestModel->revertAll();
-                return;
-            }
+            addRequest("update", description, updateStruct.newRec, updateStruct.oldRec);
         }
         //-------------------------------------------------------------------
-        //--insert requests----------------------------------------------------------------
+        //--submit changes to db --------------------------------------------
         if(!m_requestModel->submitAll())
         {
             qDebug() << "onAddRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
@@ -288,6 +225,45 @@ void MainWindow::updateRow(const QSqlRecord &oldRec, const QSqlRecord &newRec, Q
         {
             qDebug() << "updateRow:model:update -> SQL ERROR: " << model->lastError().text();
         }
+    }
+}
+
+void MainWindow::addRequest(QString typeStr, QString description, const QSqlRecord& rec, const QSqlRecord& recOld)
+{
+    QByteArray data;
+    if(typeStr == "update")
+    {
+        //QSqlRecord rec = model->record(delStruct.index);
+        QByteArray oldData = PacketManager::toByteArray(recOld);
+        QByteArray newData = PacketManager::toByteArray(rec);
+        data = PacketManager::toByteArray(oldData, newData);
+    }
+    else
+    {
+        data = PacketManager::toByteArray(rec);
+    }
+
+    int tableIndex = m_dbm->getTableIndex(rec.field(0).tableName());
+    int type = m_dbm->getRequestTypeIndex(typeStr);
+    int status = m_dbm->getRequestStatusIndex("checking");
+    int applicant = m_dbm->getSelfId();
+    int reviewer = m_dbm->getReviewerId();
+    qint64 time = QDateTime::currentMSecsSinceEpoch();
+
+    QSqlRecord requestRec = m_requestModel->record();
+    requestRec.remove(requestRec.indexOf("id"));
+    requestRec.setValue(0, rec.field("id").value());
+    requestRec.setValue(1, tableIndex);
+    requestRec.setValue(2, applicant);
+    requestRec.setValue(3, reviewer);
+    requestRec.setValue(4, type);
+    requestRec.setValue(5, status);
+    requestRec.setValue(6, data);
+    requestRec.setValue(7, time);
+    requestRec.setValue(8, description);
+    if(!m_requestModel->insertRecord(-1, requestRec))
+    {
+        m_requestModel->revertAll();
     }
 }
 void MainWindow::onDeleteRequest()
@@ -399,8 +375,24 @@ void MainWindow::onReviewRequest()
     QString description = reviewDialog->getDescription();
     if(ret == 1)//accept
     {
+        int reqStatus;
+        if(reviewDialog->hasEditRecord())
+        {
+            QString type = curentRec.value(5).toString();
+            QSqlRecord editRec = reviewDialog->getEditRecord();
+
+            QByteArray data = curentRec.value("data").toByteArray();
+            QList<QByteArray> datas = PacketManager::fromByteArray(data);
+            QSqlRecord oldRec = PacketManager::fromByteArray(datas.at(0), m_dbm, editRec.field(0).tableName());
+
+            addRequest(type, description, editRec, oldRec);
+            reqStatus = m_dbm->getRequestStatusIndex("edited");
+        }
+        else
+        {
+            reqStatus = m_dbm->getRequestStatusIndex("accepted");
+        }
         //update request status-------------------------------------
-        int reqStatus = m_dbm->getRequestStatusIndex("accepted");
         curentRec.setValue(6, reqStatus);
         curentRec.setValue(10, description);
         m_requestModel->setRecord(m_selectedRow, curentRec);
@@ -455,7 +447,7 @@ void MainWindow::onApplyRequest()
             updateRow(newRec, oldRec, model);
         }
     }
-    else if(status == "rejected")
+    else if(status == "rejected" || status == "edited")
     {
         if(type == "insert")
         {

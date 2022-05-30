@@ -18,7 +18,6 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 private:
-    void addInsertRequest();
     bool isDeleteable();
     bool isReviewable();
     bool isSendable();
@@ -27,6 +26,7 @@ private:
     void insertRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model);
     void deleteRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model);
     void updateRow(const QSqlRecord &oldRec, const QSqlRecord &newRec, QSqlRelationalTableModel *model);
+    void addRequest(QString typeStr, QString description, const QSqlRecord& rec, const QSqlRecord& recOld);
 private slots:
     void onCustomMenuRequest(QPoint pos);
     void onAddRequest();
