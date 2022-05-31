@@ -4,23 +4,32 @@
 #include <QCheckBox>
 #include <QTableWidgetItem>
 
-SendDialog::SendDialog(int requestId, QWidget *parent) :
+SendDialog::SendDialog(QSqlRecord recReq, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::SendDialog),
     m_dbm(DBManager::getDBManager())
 {
     ui->setupUi(this);
     setWindowTitle("Send Form");
+
     ui->tableWidget->setColumnCount(3);
     ui->tableWidget->resizeColumnToContents(0);
     ui->tableWidget->resizeColumnToContents(1);
     connect(ui->tableWidget, SIGNAL(cellClicked(int, int)), this, SLOT(onCellClicked(int, int)));
-    //dbm = DBManager::getDBManager();
-    m_dbm->openConnection();
+
+    int requestId = recReq.value("id").toInt();
+    QString status = recReq.value(6).toString();
+    QString applicant = recReq.value(3).toString();
     QSqlRelationalTableModel* model = m_dbm->getRelationalModelTableName("client_info");
     for (int i = 0; i < model->rowCount(); ++i)
     {
         int port_index = model->record(i).value("port_index").toInt();
+        QString name = model->record(i).value("name").toString();
+        if((status == "rejected" || status == "edited")
+                && name  != applicant)
+        {
+            continue;
+        }
         if(port_index != -1)
         {
             int id = model->record(i).value("id").toInt();

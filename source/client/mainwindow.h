@@ -21,12 +21,13 @@ private:
     bool isDeleteable();
     bool isReviewable();
     bool isSendable();
-    bool isApplyable();
+    bool isApplyable(int row);
 
     void insertRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model);
     void deleteRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model);
     void updateRow(const QSqlRecord &oldRec, const QSqlRecord &newRec, QSqlRelationalTableModel *model);
-    void addRequest(QString typeStr, QString description, const QSqlRecord& rec, const QSqlRecord& recOld);
+    void addRequest(QString typeStr, QString statusStr, QString description, const QSqlRecord& rec, const QSqlRecord& recOld);
+    void applyRequest(int row);
 private slots:
     void onCustomMenuRequest(QPoint pos);
     void onAddRequest();
@@ -35,6 +36,7 @@ private slots:
     void onRefreshRequest();
     void onReviewRequest();
     void onApplyRequest();
+    void onInfoRequest();
 private:
     Ui::MainWindow *ui;
     QSqlRelationalTableModel* m_requestModel;

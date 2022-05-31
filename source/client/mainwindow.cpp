@@ -7,6 +7,7 @@
 #include <QSqlQuery>
 #include <QDateTime>
 #include "createrequestdialog.h"
+#include "requestinfodialog.h"
 #include "reviewdialog.h"
 #include "senddialog.h"
 #include <QSqlRelationalDelegate>
@@ -48,7 +49,8 @@ void MainWindow::onCustomMenuRequest(QPoint pos)
    QAction * deletRequest = new QAction("Delete", this);
    QAction * refreshRequest = new QAction("Refresh", this);
    QAction * reviewRequest = new QAction("Review", this);
-   QAction * applyRequest = new QAction("Apply", this);
+   QAction * applyRequest = new QAction("apply", this);
+   QAction * infoRequest = new QAction("Info", this);
    /* Connect slot handlers for Action pop-up menu */
    connect(addRequest, SIGNAL(triggered()), this, SLOT(onAddRequest()));
    connect(sendRequest, SIGNAL(triggered()), this, SLOT(onSendRequest()));
@@ -56,6 +58,7 @@ void MainWindow::onCustomMenuRequest(QPoint pos)
    connect(refreshRequest, SIGNAL(triggered()), this, SLOT(onRefreshRequest()));
    connect(reviewRequest, SIGNAL(triggered()), this, SLOT(onReviewRequest()));
    connect(applyRequest, SIGNAL(triggered()), this, SLOT(onApplyRequest()));
+   connect(infoRequest, SIGNAL(triggered()), this, SLOT(onInfoRequest()));
    /* Set the actions to the menu */
    menu->addAction(addRequest);
    menu->addAction(refreshRequest);
@@ -66,71 +69,19 @@ void MainWindow::onCustomMenuRequest(QPoint pos)
        menu->addAction(deletRequest);
        menu->addAction(reviewRequest);
        menu->addAction(applyRequest);
+       menu->addAction(infoRequest);
        if(!isSendable())
            sendRequest->setDisabled(true);
        if(!isDeleteable())
            deletRequest->setDisabled(true);
        if(!isReviewable())
            reviewRequest->setDisabled(true);
-       if(!isApplyable())
+       if(!isApplyable(m_selectedRow))
            applyRequest->setDisabled(true);
    }
    /* Call the context menu */
    menu->popup(ui->tableView->viewport()->mapToGlobal(pos));
 }
-
-void MainWindow::onAddRequest()
-{
-    ///todo add transaction--------------------------------
-    CreateRequestDialog *createRequest = new CreateRequestDialog(this);
-    int ret = createRequest->exec();
-
-    if(ret == QDialog::Accepted)
-    {
-        QSqlRelationalTableModel *model = createRequest->getModel();
-        QList<int> insertIndexList = createRequest->getInsertIndexList();
-        QList<CreateRequestDialog::DeleteStruct> deleteIndexList = createRequest->getDeleteIndexList();
-        QString description = createRequest->getDescription();
-        //--insert table changes---------------------------------------------
-        if(!model->submitAll())
-        {
-            qDebug() << "onAddRequest:model:submit -> SQL ERROR: " << model->lastError().text();
-            return;
-        }
-        QList<CreateRequestDialog::UpdateStruct> updateIndexList = createRequest->getUpdateIndexList();
-        //------
-        //--insert "insert request" ----------------------------------------
-
-        for(auto insertIndex:insertIndexList)
-        {
-            //valid index (delete index remove from model in submitAll)
-            int index = insertIndex - deleteIndexList.length();
-            QSqlRecord rec = model->record(index);
-            addRequest("insert", description, rec, rec);
-        }
-        //-------------------------------------------------------------------
-        //--insert delete request--------------------------------------------
-        for(auto delStruct:deleteIndexList)
-        {
-            addRequest("delete", description, delStruct.rec, delStruct.rec);
-        }
-        //-------------------------------------------------------------------
-        //--insert update request--------------------------------------------
-        for(auto updateStruct:updateIndexList)
-        {
-            addRequest("update", description, updateStruct.newRec, updateStruct.oldRec);
-        }
-        //-------------------------------------------------------------------
-        //--submit changes to db --------------------------------------------
-        if(!m_requestModel->submitAll())
-        {
-            qDebug() << "onAddRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
-            m_requestModel->revertAll();
-        }
-    }
-
-}
-
 bool MainWindow::isDeleteable()
 {
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
@@ -144,6 +95,9 @@ bool MainWindow::isReviewable()
 {
     QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
     int requestId = reqRec.value("id").toInt();
+    QString status = reqRec.value(6).toString();
+    if(status == "accepted" || status == "edited" || status == "rejected")
+        return false;
     if(!m_dbm->isReviewer())
         return false;
     if(m_dbm->isSended(requestId))
@@ -174,9 +128,9 @@ bool MainWindow::isSendable()
     return true;
 }
 
-bool MainWindow::isApplyable()
+bool MainWindow::isApplyable(int row)
 {
-    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    QSqlRecord reqRec = m_requestModel->record(row);
     int requestId = reqRec.value("id").toInt();
     QString status = reqRec.value(6).toString();
     if(status == "checking" || status == "waiting")
@@ -228,7 +182,8 @@ void MainWindow::updateRow(const QSqlRecord &oldRec, const QSqlRecord &newRec, Q
     }
 }
 
-void MainWindow::addRequest(QString typeStr, QString description, const QSqlRecord& rec, const QSqlRecord& recOld)
+void MainWindow::addRequest(QString typeStr, QString statusStr, QString description,
+                            const QSqlRecord& rec, const QSqlRecord& recOld)
 {
     QByteArray data;
     if(typeStr == "update")
@@ -245,7 +200,7 @@ void MainWindow::addRequest(QString typeStr, QString description, const QSqlReco
 
     int tableIndex = m_dbm->getTableIndex(rec.field(0).tableName());
     int type = m_dbm->getRequestTypeIndex(typeStr);
-    int status = m_dbm->getRequestStatusIndex("checking");
+    int status = m_dbm->getRequestStatusIndex(statusStr);
     int applicant = m_dbm->getSelfId();
     int reviewer = m_dbm->getReviewerId();
     qint64 time = QDateTime::currentMSecsSinceEpoch();
@@ -266,160 +221,10 @@ void MainWindow::addRequest(QString typeStr, QString description, const QSqlReco
         m_requestModel->revertAll();
     }
 }
-void MainWindow::onDeleteRequest()
+
+void MainWindow::applyRequest(int row)
 {
-    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
-    QString tableName = reqRec.value(2).toString();
-    QString type = reqRec.value(5).toString();
-    QByteArray data = reqRec.value("data").toByteArray();
-
-    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(tableName);
-    if(type == "insert")
-    {
-        QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
-        deleteRow(tableRec, model);
-    }
-    else if(type == "delete")
-    {
-        QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
-        insertRow(tableRec, model);
-    }
-    else if(type == "update")
-    {
-        QList<QByteArray> datas = PacketManager::fromByteArray(data);
-        QSqlRecord oldRec = PacketManager::fromByteArray(datas.at(0), m_dbm, tableName);
-        QSqlRecord newRec = PacketManager::fromByteArray(datas.at(1), m_dbm, tableName);
-        updateRow(oldRec, newRec, model);
-    }
-    if(m_requestModel->removeRows(m_selectedRow, 1))
-    {
-        if(!m_requestModel->submitAll())
-        {
-            qDebug() << "onRollbackRequest:m_requestModel:remove -> SQL ERROR: " << m_requestModel->lastError().text();
-            m_requestModel->revertAll();
-        }
-        m_requestModel->select();
-    }
-
-}
-
-void MainWindow::onSendRequest()
-{
-    // add acknowledgment --------------------------------------------------------------
-    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
-    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName("acknowledgment");
-    int reviewerId = m_dbm->getReviewerId();
-    int ackStatus = m_dbm->getAckStatusIndex("pending");
-    int requestId = reqRec.value("id").toInt();
-    if(m_dbm->isReviewer())
-    {
-        SendDialog *sendDialog = new SendDialog(requestId, this);
-        int ret = sendDialog->exec();
-
-        if(ret == QDialog::Accepted)
-        {
-            QList<int> selectedIds = sendDialog->getSelectedId();
-            for(int id:selectedIds)
-            {
-                QSqlRecord rec = model->record();
-                rec.remove(rec.indexOf("id"));
-                rec.setValue("request_id",reqRec.value("id"));
-                rec.setValue("receiver",id);
-                rec.setValue("status",ackStatus);
-                model->insertRecord(-1, rec);
-            }
-        }
-        else
-            return;
-    }
-    else//is client and send to reviewer
-    {
-        QSqlRecord rec = model->record();
-        rec.remove(rec.indexOf("id"));
-        rec.setValue("request_id",reqRec.value("id"));
-        rec.setValue("receiver",reviewerId);
-        rec.setValue("status",ackStatus);
-        model->insertRecord(-1, rec);
-    }
-    if(!model->submitAll())
-    {
-        qDebug() << "onSendRequest:model:insert ack -> SQL ERROR: " << model->lastError().text();
-        return;
-    }
-    //update request status-------------------------------------
-    QSqlRecord curentRec = m_requestModel->record(m_selectedRow);
-    QString status = curentRec.value(6).toString();
-    if(status == "checking")
-    {
-        int reqStatus = m_dbm->getRequestStatusIndex("waiting");
-        curentRec.setValue(6, reqStatus);
-        m_requestModel->setRecord(m_selectedRow, curentRec);
-        if(!m_requestModel->submitAll())
-        {
-            qDebug() << "onSendRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
-            m_requestModel->revertAll();
-        }
-    }
-}
-
-void MainWindow::onRefreshRequest()
-{
-    m_requestModel->select();
-}
-
-void MainWindow::onReviewRequest()
-{
-    QSqlRecord curentRec = m_requestModel->record(m_selectedRow);
-    ReviewDialog *reviewDialog = new ReviewDialog(curentRec, this);
-    int ret = reviewDialog->exec();
-    QString description = reviewDialog->getDescription();
-    if(ret == 1)//accept
-    {
-        int reqStatus;
-        if(reviewDialog->hasEditRecord())
-        {
-            QString type = curentRec.value(5).toString();
-            QSqlRecord editRec = reviewDialog->getEditRecord();
-
-            QByteArray data = curentRec.value("data").toByteArray();
-            QList<QByteArray> datas = PacketManager::fromByteArray(data);
-            QSqlRecord oldRec = PacketManager::fromByteArray(datas.at(0), m_dbm, editRec.field(0).tableName());
-
-            addRequest(type, description, editRec, oldRec);
-            reqStatus = m_dbm->getRequestStatusIndex("edited");
-        }
-        else
-        {
-            reqStatus = m_dbm->getRequestStatusIndex("accepted");
-        }
-        //update request status-------------------------------------
-        curentRec.setValue(6, reqStatus);
-        curentRec.setValue(10, description);
-        m_requestModel->setRecord(m_selectedRow, curentRec);
-        if(!m_requestModel->submitAll())
-        {
-            qDebug() << "onReviewRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
-            m_requestModel->revertAll();
-        }
-    }
-    else if(ret == -1)//reject
-    {
-        //update request status-------------------------------------
-        int reqStatus = m_dbm->getRequestStatusIndex("rejected");
-        curentRec.setValue(6, reqStatus);
-        curentRec.setValue(10, description);
-        m_requestModel->setRecord(m_selectedRow, curentRec);
-        if(!m_requestModel->submitAll())
-        {
-            qDebug() << "onReviewRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
-            m_requestModel->revertAll();
-        }
-    }
-}
-
-void MainWindow::onApplyRequest()
-{
-    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    QSqlRecord reqRec = m_requestModel->record(row);
     QString tableName = reqRec.value(2).toString();
     QString type = reqRec.value(5).toString();
     QString status = reqRec.value(6).toString();
@@ -468,11 +273,243 @@ void MainWindow::onApplyRequest()
         }
     }
     reqRec.setValue("apply", true);
-    m_requestModel->setRecord(m_selectedRow, reqRec);
+    m_requestModel->setRecord(row, reqRec);
     if(!m_requestModel->submitAll())
     {
         qDebug() << "onApplyRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
         m_requestModel->revertAll();
     }
+}
+
+void MainWindow::onAddRequest()
+{
+    ///todo add transaction--------------------------------
+    CreateRequestDialog *createRequest = new CreateRequestDialog(this);
+    int ret = createRequest->exec();
+
+    if(ret == QDialog::Accepted)
+    {
+        QSqlRelationalTableModel *model = createRequest->getModel();
+        QList<int> insertIndexList = createRequest->getInsertIndexList();
+        QList<CreateRequestDialog::DeleteStruct> deleteIndexList = createRequest->getDeleteIndexList();
+        QString description = createRequest->getDescription();
+        //--insert table changes---------------------------------------------
+        if(!model->submitAll())
+        {
+            qDebug() << "onAddRequest:model:submit -> SQL ERROR: " << model->lastError().text();
+            return;
+        }
+        QList<CreateRequestDialog::UpdateStruct> updateIndexList = createRequest->getUpdateIndexList();
+        //------
+        //--insert "insert request" ----------------------------------------
+
+        for(auto insertIndex:insertIndexList)
+        {
+            //valid index (delete index remove from model in submitAll)
+            int index = insertIndex - deleteIndexList.length();
+            QSqlRecord rec = model->record(index);
+            addRequest("insert", "checking", description, rec, rec);
+        }
+        //-------------------------------------------------------------------
+        //--insert delete request--------------------------------------------
+        for(auto delStruct:deleteIndexList)
+        {
+            addRequest("delete", "checking", description, delStruct.rec, delStruct.rec);
+        }
+        //-------------------------------------------------------------------
+        //--insert update request--------------------------------------------
+        for(auto updateStruct:updateIndexList)
+        {
+            addRequest("update", "checking", description, updateStruct.newRec, updateStruct.oldRec);
+        }
+        //-------------------------------------------------------------------
+        //--submit changes to db --------------------------------------------
+        if(!m_requestModel->submitAll())
+        {
+            qDebug() << "onAddRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
+            m_requestModel->revertAll();
+        }
+        ui->tableView->selectRow(0);
+    }
+
+}
+
+void MainWindow::onDeleteRequest()
+{
+    QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+    QString tableName = reqRec.value(2).toString();
+    QString type = reqRec.value(5).toString();
+    QByteArray data = reqRec.value("data").toByteArray();
+
+    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName(tableName);
+    if(type == "insert")
+    {
+        QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
+        deleteRow(tableRec, model);
+    }
+    else if(type == "delete")
+    {
+        QSqlRecord tableRec = PacketManager::fromByteArray(data, m_dbm, tableName);
+        insertRow(tableRec, model);
+    }
+    else if(type == "update")
+    {
+        QList<QByteArray> datas = PacketManager::fromByteArray(data);
+        QSqlRecord oldRec = PacketManager::fromByteArray(datas.at(0), m_dbm, tableName);
+        QSqlRecord newRec = PacketManager::fromByteArray(datas.at(1), m_dbm, tableName);
+        updateRow(oldRec, newRec, model);
+    }
+    if(m_requestModel->removeRows(m_selectedRow, 1))
+    {
+        if(!m_requestModel->submitAll())
+        {
+            qDebug() << "onRollbackRequest:m_requestModel:remove -> SQL ERROR: " << m_requestModel->lastError().text();
+            m_requestModel->revertAll();
+        }
+        m_requestModel->select();
+    }
+
+}
+
+void MainWindow::onSendRequest()
+{
+    // add acknowledgment --------------------------------------------------------------
+    QSqlRecord curentRec = m_requestModel->record(m_selectedRow);
+    QSqlRelationalTableModel *model = m_dbm->getRelationalModelTableName("acknowledgment");
+    int reviewerId = m_dbm->getReviewerId();
+    int ackStatus = m_dbm->getAckStatusIndex("pending");
+    int requestId = curentRec.value("id").toInt();
+    QString status = curentRec.value(6).toString();
+    if(m_dbm->isReviewer())
+    {
+        SendDialog *sendDialog = new SendDialog(curentRec, this);
+        int ret = sendDialog->exec();
+
+        if(ret == QDialog::Accepted)
+        {
+            QList<int> selectedIds = sendDialog->getSelectedId();
+            for(int id:selectedIds)
+            {
+                QSqlRecord rec = model->record();
+                rec.remove(rec.indexOf("id"));
+                rec.setValue("request_id",requestId);
+                rec.setValue("receiver",id);
+                rec.setValue("status",ackStatus);
+                model->insertRecord(-1, rec);
+            }
+        }
+        else
+            return;
+    }
+    else//is client and send to reviewer
+    {
+        QSqlRecord rec = model->record();
+        rec.remove(rec.indexOf("id"));
+        rec.setValue("request_id",requestId);
+        rec.setValue("receiver",reviewerId);
+        rec.setValue("status",ackStatus);
+        model->insertRecord(-1, rec);
+    }
+    if(!model->submitAll())
+    {
+        qDebug() << "onSendRequest:model:insert ack -> SQL ERROR: " << model->lastError().text();
+        return;
+    }
+    //update request status-------------------------------------
+    if(status == "checking")
+    {
+        int reqStatus = m_dbm->getRequestStatusIndex("waiting");
+        curentRec.setValue(6, reqStatus);
+        m_requestModel->setRecord(m_selectedRow, curentRec);
+        if(!m_requestModel->submitAll())
+        {
+            qDebug() << "onSendRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
+            m_requestModel->revertAll();
+        }
+    }
+}
+
+void MainWindow::onRefreshRequest()
+{
+    m_requestModel->select();
+}
+
+void MainWindow::onReviewRequest()
+{
+    QSqlRecord curentRec = m_requestModel->record(m_selectedRow);
+    ReviewDialog *reviewDialog = new ReviewDialog(curentRec, this);
+    int ret = reviewDialog->exec();
+    QString description = reviewDialog->getDescription();
+    if(ret == 1)//accept
+    {
+        int reqStatus;
+        if(reviewDialog->hasEditRecord())
+        {
+            QString type = curentRec.value(5).toString();
+            QSqlRecord editRec = reviewDialog->getEditRecord();
+
+            QByteArray data = curentRec.value("data").toByteArray();
+            QList<QByteArray> datas = PacketManager::fromByteArray(data);
+            QSqlRecord oldRec = PacketManager::fromByteArray(datas.at(0), m_dbm, editRec.field(0).tableName());
+
+            addRequest(type, "accepted", description, editRec, oldRec);
+            reqStatus = m_dbm->getRequestStatusIndex("edited");
+        }
+        else
+        {
+            reqStatus = m_dbm->getRequestStatusIndex("accepted");
+        }
+        //update request status-------------------------------------
+        curentRec.setValue(6, reqStatus);
+        curentRec.setValue(10, description);
+        m_requestModel->setRecord(m_selectedRow, curentRec);
+        if(!m_requestModel->submitAll())
+        {
+            qDebug() << "onReviewRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
+            m_requestModel->revertAll();
+        }
+
+        if(reviewDialog->hasEditRecord())
+        {
+            if(isApplyable(m_selectedRow + 1))
+                applyRequest(m_selectedRow + 1);
+            applyRequest(0);
+            ui->tableView->selectRow(0);
+        }
+        else
+        {
+            if(isApplyable(m_selectedRow))
+                applyRequest(m_selectedRow);
+        }
+
+    }
+    else if(ret == -1)//reject
+    {
+        //update request status-------------------------------------
+        int reqStatus = m_dbm->getRequestStatusIndex("rejected");
+        curentRec.setValue(6, reqStatus);
+        curentRec.setValue(10, description);
+        m_requestModel->setRecord(m_selectedRow, curentRec);
+        if(!m_requestModel->submitAll())
+        {
+            qDebug() << "onReviewRequest:m_requestModel:submit -> SQL ERROR: " << m_requestModel->lastError().text();
+            m_requestModel->revertAll();
+        }
+        if(isApplyable(m_selectedRow))
+            applyRequest(m_selectedRow);
+    }
+}
+
+void MainWindow::onApplyRequest()
+{
+    applyRequest(m_selectedRow);
+}
+
+
+void MainWindow::onInfoRequest()
+{
+    QSqlRecord curentRec = m_requestModel->record(m_selectedRow);
+    RequestInfoDialog *infoDialog = new RequestInfoDialog(curentRec, this);
+    infoDialog->exec();
 }
 

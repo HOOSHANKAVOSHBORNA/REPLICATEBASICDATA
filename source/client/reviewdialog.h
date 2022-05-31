@@ -41,6 +41,7 @@ private:
     QSqlRelationalTableModel* m_model;
     bool m_hasEditRow;
     QString m_reqType;
+    QString m_reqStatus;
 };
 
 #endif // REVIEWDIALOG_H

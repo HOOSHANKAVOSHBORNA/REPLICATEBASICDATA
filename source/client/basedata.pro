@@ -20,6 +20,7 @@ SOURCES += \
     createrequestdialog.cpp \
     main.cpp \
     mainwindow.cpp \
+    requestinfodialog.cpp \
     reviewdialog.cpp \
     senddialog.cpp
 
@@ -27,12 +28,14 @@ HEADERS += \
     createrequestdialog.h \
     datastrucs.h \
     mainwindow.h \
+    requestinfodialog.h \
     reviewdialog.h \
     senddialog.h
 
 FORMS += \
     createrequestdialog.ui \
     mainwindow.ui \
+    requestinfodialog.ui \
     reviewdialog.ui \
     senddialog.ui
 

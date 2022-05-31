@@ -23,6 +23,7 @@ ReviewDialog::ReviewDialog(QSqlRecord rec, QWidget *parent) :
     QString applicant = rec.value(3).toString();
     QString type = rec.value(5).toString();
     m_reqType = type;
+    m_reqStatus = rec.value(6).toString();
     QByteArray data = rec.value("data").toByteArray();
 
     if(type == "update")
@@ -52,8 +53,8 @@ ReviewDialog::ReviewDialog(QSqlRecord rec, QWidget *parent) :
             ui->tableWidgetReq->setItem(1, i, new QTableWidgetItem(value));
         }
 
-        ui->tableWidgetReq->setVerticalHeaderItem(0,new QTableWidgetItem("new"));
-        ui->tableWidgetReq->setVerticalHeaderItem(1,new QTableWidgetItem("old"));
+        ui->tableWidgetReq->setVerticalHeaderItem(0,new QTableWidgetItem("Current"));
+        ui->tableWidgetReq->setVerticalHeaderItem(1,new QTableWidgetItem("Old"));
     }
     else
     {
@@ -72,7 +73,7 @@ ReviewDialog::ReviewDialog(QSqlRecord rec, QWidget *parent) :
 
             connect(checkbox, SIGNAL(stateChanged(int)), this, SLOT(onStateChanged(int)));
         }
-        ui->tableWidgetReq->setVerticalHeaderItem(0,new QTableWidgetItem("new"));
+        ui->tableWidgetReq->setVerticalHeaderItem(0,new QTableWidgetItem("Current"));
     }
     ui->tableWidgetReq->hideColumn(0);
     ui->comboField->removeItem(0);
@@ -192,7 +193,7 @@ void ReviewDialog::on_btnClose_clicked()
 void ReviewDialog::onCustomMenuRequest(QPoint pos)
 {
     //can not edit delete request
-    if(m_reqType != "delete")
+    if(m_reqType != "delete" && m_reqStatus != "checking")
     {
         /* Create an object context menu */
        QMenu * menu = new QMenu(this);
