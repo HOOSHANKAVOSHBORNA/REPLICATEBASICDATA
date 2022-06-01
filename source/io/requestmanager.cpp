@@ -17,7 +17,7 @@ RequestManager::RequestManager(QObject *parent):
     //init and open port
     initSerialPorts();
     connect(&m_timer, &QTimer::timeout, this, &RequestManager::checkAcknowledgment);
-    m_timer.start(7000);
+    m_timer.start(10000);
 
 }
 
@@ -89,6 +89,7 @@ void RequestManager::sendRequest(int request_id, int receiver)
         return;
     }
     QSqlRecord rec = model->record(0);
+    rec.setValue("apply", false);
     QByteArray data = PacketManager::toByteArray(rec);
     // add header----------------
     QByteArray result;
