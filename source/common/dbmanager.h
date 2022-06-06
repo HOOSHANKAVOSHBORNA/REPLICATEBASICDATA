@@ -11,9 +11,11 @@
 #include <QFile>
 #include <QDebug>
 #include <QSqlRecord>
+#include <QSqlDriver>
 
-class DBManager
+class DBManager : public QObject
 {
+    Q_OBJECT
 public:
     static DBManager *getDBManager();
     bool openConnection();
@@ -26,6 +28,7 @@ public:
     int getRequestStatusIndex(QString _statusName) const;
     int getTableIndex(QString _tableName) const;
     int getAckStatusIndex(QString _statusName) const;
+    QString getRequestAckStatus(int reqId, int receiver) const;
     int getSelfId() const;
     int getReviewerId() const;
     bool isReviewer() const;
@@ -33,6 +36,10 @@ public:
     bool isSended(int reqId) const;
     bool isApplicant(int reqId) const;
     bool hasApplied(int reqId) const;
+private slots:
+    void onNotification(const QString &name, QSqlDriver::NotificationSource source, const QVariant &payload);
+signals:
+    void requestChange(int id);
 private:
     DBManager();
     QSqlDatabase db;

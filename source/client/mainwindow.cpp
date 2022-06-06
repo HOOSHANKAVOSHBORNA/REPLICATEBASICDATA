@@ -22,6 +22,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onCustomMenuRequest(QPoint)));
+    connect(m_dbm, SIGNAL(requestChange(int)), this, SLOT(onRefreshRequest()));
+
 
     m_requestModel = m_dbm->getRequestRelationalModel();
     ui->tableView->setModel(m_requestModel);
@@ -71,7 +73,18 @@ void MainWindow::onCustomMenuRequest(QPoint pos)
        menu->addAction(applyRequest);
        menu->addAction(infoRequest);
        if(!isSendable())
+       {
            sendRequest->setDisabled(true);
+           if(!m_dbm->isReviewer())
+           {
+               QSqlRecord reqRec = m_requestModel->record(m_selectedRow);
+               int requestId = reqRec.value("id").toInt();
+               int reciever = m_dbm->getReviewerId();
+               QString ackStatus = m_dbm->getRequestAckStatus(requestId, reciever);
+               if(ackStatus != "")
+                   sendRequest->setText("Send(" + ackStatus +")");
+           }
+       }
        if(!isDeleteable())
            deletRequest->setDisabled(true);
        if(!isReviewable())

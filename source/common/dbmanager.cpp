@@ -1,4 +1,7 @@
 #include "dbmanager.h"
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSqlDriver>
 
 DBManager* DBManager::instance= nullptr;
 DBManager::DBManager()
@@ -46,6 +49,10 @@ bool DBManager::openConnection()
     {
         qDebug() << "db is connected.";
     }
+    //data base notify
+    db.driver()->subscribeToNotification("change_request");
+    connect(db.driver(),SIGNAL(notification(const QString &, QSqlDriver::NotificationSource, const QVariant &)),
+            this,SLOT(onNotification(const QString &, QSqlDriver::NotificationSource, const QVariant &)));
     return ok;
 }
 
@@ -195,6 +202,20 @@ int DBManager::getAckStatusIndex(QString _statusName) const
     return model->record(0).value("id").toInt();
 }
 
+QString DBManager::getRequestAckStatus(int reqId, int receiver) const
+{
+    QSqlQueryModel* model = new QSqlQueryModel();
+    model->setQuery(QObject::tr("SELECT request_id, name FROM acknowledgment "
+                                "JOIN ack_status "
+                                "ON status = ack_status.id "
+                                "WHERE request_id = %1 AND receiver = %2;").arg(reqId).arg(receiver), db);
+    if(model->lastError().isValid())
+    {
+        qDebug() << "getAckStatusIndex -> SQL ERROR: " << model->lastError().text();
+    }
+    return model->record(0).value("name").toString();
+}
+
 int DBManager::getSelfId() const
 {
     int portIndex = -1;
@@ -284,6 +305,25 @@ bool DBManager::hasApplied(int reqId) const
         qDebug() << "isSended -> SQL ERROR: " << model->lastError().text();
     }
     return model->record(0).value("apply").toBool();
+}
+
+void DBManager::onNotification(const QString &name, QSqlDriver::NotificationSource source, const QVariant &payload)
+{
+    if(name == "change_request")
+    {
+        //qDebug()<<"notify:";
+        //qDebug()<<"name:"<<name;
+        //qDebug()<<"source:"<<source;
+        //qDebug()<<"payload:"<<payload;
+        QJsonDocument doc = QJsonDocument::fromJson(payload.toString().toUtf8());
+        //qDebug()<<"doc:"<<doc;
+        QJsonObject jobj = doc.object();
+        //qDebug()<<"jobj:"<<jobj;
+        int id = jobj.value("id").toInt();
+        //qDebug()<<"id:"<<id;
+        if(source != QSqlDriver::NotificationSource::SelfSource)
+            emit requestChange(id);
+    }
 }
 
 
