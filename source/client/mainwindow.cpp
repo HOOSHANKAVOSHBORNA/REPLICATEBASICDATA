@@ -158,8 +158,9 @@ bool MainWindow::isApplyable(int row)
     return true;
 }
 
-void MainWindow::insertRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model)
+void MainWindow::insertRow(QSqlRecord &tableRec, QSqlRelationalTableModel *model)
 {
+    tableRec.remove(tableRec.indexOf("id"));
     if(model->insertRecord(-1, tableRec))
     {
         if(!model->submitAll())
@@ -171,7 +172,16 @@ void MainWindow::insertRow(const QSqlRecord &tableRec, QSqlRelationalTableModel 
 
 void MainWindow::deleteRow(const QSqlRecord &tableRec, QSqlRelationalTableModel *model)
 {
-    model->setFilter("id = " + tableRec.value("id").toString());
+    QString strFilter = " 1 = 1 ";
+    for (int i = 1; i < tableRec.count(); i++) // filter other feild except id
+    {
+        if(tableRec.value(i).type() == QVariant::Type::String)
+            strFilter +=  " AND " + tableRec.fieldName(i) + " = '" + tableRec.value(i).toString() + "'";
+        else
+            strFilter += " AND " + tableRec.fieldName(i) + " = " + tableRec.value(i).toString();
+
+    }
+    model->setFilter(strFilter);
     model->select();
     if(model->removeRows(0, 1))
     {
@@ -182,11 +192,21 @@ void MainWindow::deleteRow(const QSqlRecord &tableRec, QSqlRelationalTableModel 
     }
 }
 
-void MainWindow::updateRow(const QSqlRecord &oldRec, const QSqlRecord &newRec, QSqlRelationalTableModel *model)
+void MainWindow::updateRow(const QSqlRecord &updateRec, const QSqlRecord &rec, QSqlRelationalTableModel *model)
 {
-    model->setFilter("id = " + newRec.value("id").toString());
+    QString strFilter = " 1 = 1 ";
+    for (int i = 1; i < rec.count(); i++) // filter other feild except id
+    {
+        if(rec.value(i).type() == QVariant::Type::String)
+            strFilter +=  " AND " + rec.fieldName(i) + " = '" + rec.value(i).toString() + "'";
+        else
+            strFilter += " AND " + rec.fieldName(i) + " = " + rec.value(i).toString();
+
+    }
+    model->setFilter(strFilter);
+    //model->setFilter("id = " + rec.value("id").toString());
     model->select();
-    if(model->setRecord(0, oldRec))
+    if(model->setRecord(0, updateRec))
     {
         if(!model->submitAll())
         {

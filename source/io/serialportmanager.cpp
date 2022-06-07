@@ -22,6 +22,8 @@ SerialPortManager::SerialPortManager(PortInfo portInfo, QObject *parent):
 
 void SerialPortManager::sendData(const QByteArray &data)
 {
+    if(!m_serial->isOpen())
+        return;
     m_serial->write(data);
     const qint64 bytesWritten = m_serial->write(data);
     //const QString request = QString::fromUtf8(data);
@@ -135,7 +137,7 @@ void SerialPortManager::openPort()
         m_standardOutput << tr("Can't open %1: %2, error code %3")
                             .arg(m_serial->portName())
                             .arg(m_currentPortInfo.name)
-                            .arg(m_serial->errorString());
+                            .arg(m_serial->errorString())<<endl;
     }
 }
 
